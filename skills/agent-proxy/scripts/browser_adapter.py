@@ -144,36 +144,66 @@ class BrowserAdapter:
         headless = config.get("headless")
         if headless is None:
             headless = bool(user_data_dir)  # Auto: headless if profile exists
-        
-        # Use system Chrome instead of Chromium to avoid Google's bot detection
-        use_chrome = config.get("use_chrome", True)  # Default to Chrome
-        channel = "chrome" if use_chrome else None
 
-        # Anti-detection arguments
-        browser_args = [
-            "--disable-blink-features=AutomationControlled",
-            "--disable-infobars",
-            "--no-first-run",
-            "--no-default-browser-check",
-        ]
+        # Browser type selection: chromium, firefox, webkit, chrome
+        browser_type = config.get("browser_type", "firefox")  # Default to Firefox to avoid confusion with user's Chrome
 
+        # Get the appropriate browser engine
+        if browser_type == "firefox":
+            browser_engine = self.playwright.firefox
+            channel = None
+            browser_args = []  # Firefox doesn't use same args as Chromium
+        elif browser_type == "webkit":
+            browser_engine = self.playwright.webkit
+            channel = None
+            browser_args = []
+        elif browser_type == "chrome":
+            browser_engine = self.playwright.chromium
+            channel = "chrome"  # Use system Chrome
+            browser_args = [
+                "--disable-blink-features=AutomationControlled",
+                "--disable-infobars",
+                "--no-first-run",
+                "--no-default-browser-check",
+            ]
+        else:  # chromium (default Playwright Chromium)
+            browser_engine = self.playwright.chromium
+            channel = None
+            browser_args = [
+                "--disable-blink-features=AutomationControlled",
+                "--disable-infobars",
+                "--no-first-run",
+                "--no-default-browser-check",
+            ]
+
+        # Launch browser with appropriate settings
         if user_data_dir:
-            self.context = self.playwright.chromium.launch_persistent_context(
+            launch_kwargs = {
+                "headless": headless,
+                "viewport": {"width": 1280, "height": 800},
+            }
+            if channel:
+                launch_kwargs["channel"] = channel
+            if browser_args:
+                launch_kwargs["args"] = browser_args
+                launch_kwargs["ignore_default_args"] = ["--enable-automation"]
+
+            self.context = browser_engine.launch_persistent_context(
                 user_data_dir,
-                headless=headless,
-                channel=channel,
-                viewport={"width": 1280, "height": 800},
-                args=browser_args,
-                ignore_default_args=["--enable-automation"],
+                **launch_kwargs
             )
             self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
         else:
-            self.browser = self.playwright.chromium.launch(
-                headless=headless,
-                channel=channel,
-                args=browser_args,
-                ignore_default_args=["--enable-automation"],
-            )
+            launch_kwargs = {
+                "headless": headless,
+            }
+            if channel:
+                launch_kwargs["channel"] = channel
+            if browser_args:
+                launch_kwargs["args"] = browser_args
+                launch_kwargs["ignore_default_args"] = ["--enable-automation"]
+
+            self.browser = browser_engine.launch(**launch_kwargs)
             self.context = self.browser.new_context(
                 viewport={"width": 1280, "height": 800},
             )

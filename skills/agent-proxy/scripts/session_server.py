@@ -316,6 +316,8 @@ Examples:
     start_parser = subparsers.add_parser("start", help="Start session server")
     start_parser.add_argument("--url", "-u", required=True, help="Target agent URL")
     start_parser.add_argument("--user-data-dir", help="Browser profile directory")
+    start_parser.add_argument("--browser", choices=["firefox", "chromium", "webkit", "chrome"],
+                              default="firefox", help="Browser to use (default: firefox)")
     headless_group = start_parser.add_mutually_exclusive_group()
     headless_group.add_argument("--headless", action="store_true", help="Run in headless mode (no visible browser)")
     headless_group.add_argument("--no-headless", "--visible", action="store_true", help="Show browser window (useful for debugging or manual login)")
@@ -351,6 +353,8 @@ Examples:
         config = {}
         if args.user_data_dir:
             config["user_data_dir"] = os.path.expanduser(args.user_data_dir)
+        if args.browser:
+            config["browser_type"] = args.browser
         if args.headless:
             config["headless"] = True
         elif hasattr(args, 'no_headless') and args.no_headless:

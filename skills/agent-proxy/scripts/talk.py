@@ -74,6 +74,8 @@ Examples:
 
     # Arguments specifically for starting a session
     parser.add_argument("--user-data-dir", help="Browser profile dir (keeps login state for web UIs)")
+    parser.add_argument("--browser", choices=["firefox", "chromium", "webkit", "chrome"],
+                        default="firefox", help="Browser to use (default: firefox to avoid confusion with your regular Chrome)")
     headless_group = parser.add_mutually_exclusive_group()
     headless_group.add_argument("--headless", action="store_true", help="Run browser in headless mode for web UIs")
     headless_group.add_argument("--no-headless", "--visible", action="store_true", help="Show browser window (overrides default headless behavior)")
@@ -97,6 +99,8 @@ Examples:
             hints["system_prompt"] = args.system
         if args.user_data_dir:
             hints["user_data_dir"] = os.path.expanduser(args.user_data_dir) # Expand user for direct use
+        if args.browser:
+            hints["browser_type"] = args.browser
         if args.headless:
             hints["headless"] = True
 
@@ -194,6 +198,8 @@ Examples:
             ]
             if args.user_data_dir:
                 cmd.extend(["--user-data-dir", os.path.expanduser(args.user_data_dir)])
+            if args.browser:
+                cmd.extend(["--browser", args.browser])
             if args.headless:
                 cmd.append("--headless")
             elif hasattr(args, 'no_headless') and args.no_headless:
