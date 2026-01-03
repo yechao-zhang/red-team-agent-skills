@@ -74,7 +74,9 @@ Examples:
 
     # Arguments specifically for starting a session
     parser.add_argument("--user-data-dir", help="Browser profile dir (keeps login state for web UIs)")
-    parser.add_argument("--headless", action="store_true", help="Run browser in headless mode for web UIs")
+    headless_group = parser.add_mutually_exclusive_group()
+    headless_group.add_argument("--headless", action="store_true", help="Run browser in headless mode for web UIs")
+    headless_group.add_argument("--no-headless", "--visible", action="store_true", help="Show browser window (overrides default headless behavior)")
     parser.add_argument("--no-wait-login", action="store_true", help="Don't wait for login when connecting directly (for web UIs)")
 
     args = parser.parse_args()
@@ -194,6 +196,8 @@ Examples:
                 cmd.extend(["--user-data-dir", os.path.expanduser(args.user_data_dir)])
             if args.headless:
                 cmd.append("--headless")
+            elif hasattr(args, 'no_headless') and args.no_headless:
+                cmd.append("--no-headless")
 
             if not args.quiet:
                 print(f"🚀 Starting session server for {args.url} in background...")
