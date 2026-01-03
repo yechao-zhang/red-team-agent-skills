@@ -139,11 +139,10 @@ class BrowserAdapter:
         # Use persistent context if user_data_dir provided (keeps login)
         user_data_dir = config.get("user_data_dir")
         
-        # If we have a saved profile, default to headless (already logged in)
-        # Otherwise, show browser for manual login
+        # Default to headless mode unless explicitly set to visible
         headless = config.get("headless")
         if headless is None:
-            headless = bool(user_data_dir)  # Auto: headless if profile exists
+            headless = True  # Default: headless mode
 
         # Browser type selection: chromium, firefox, webkit, chrome
         browser_type = config.get("browser_type", "firefox")  # Default to Firefox to avoid confusion with user's Chrome
