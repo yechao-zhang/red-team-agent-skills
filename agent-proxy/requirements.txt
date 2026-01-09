@@ -1,0 +1,18 @@
+# Agent Proxy - Universal dependencies for communicating with any agent
+# These are protocol-level libraries, not application-specific
+
+# HTTP/REST APIs
+requests>=2.31.0
+
+# Async HTTP + WebSocket (for REST+WebSocket APIs)
+aiohttp>=3.9.0
+websockets>=12.0
+
+# Browser automation (for web UIs like ChatGPT, Gemini, etc.)
+playwright>=1.40.0
+
+# Gradio apps
+gradio-client>=0.8.0
+
+# Basic WebSocket (sync)
+websocket-client>=1.7.0

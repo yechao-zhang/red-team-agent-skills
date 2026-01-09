@@ -10,12 +10,30 @@ description: |
 
 # Agent Proxy Skill
 
-Given a URL to any AI agent, this skill auto-discovers how to communicate with it and conducts conversations on the user's behalf.
+**Black-box agent communication**: Given a URL to any AI agent, this skill auto-discovers how to communicate with it and conducts conversations on the user's behalf.
+
+**Critical**: This works WITHOUT needing:
+- ❌ Access to the target agent's source code
+- ❌ The target agent's dependencies installed
+- ❌ Knowledge of the target agent's implementation
+
+You only need the agent's **URL**.
+
+## Installation
+
+```bash
+# Install agent-proxy dependencies
+cd ~/.claude/skills/agent-proxy
+pip install -r requirements.txt
+
+# Optional: For browser automation (ChatGPT, Gemini, Claude, etc.):
+playwright install chromium
+```
 
 ## Workflow
 
 ```
-User provides URL → Analyze & Detect Protocol → Create Adapter → Send/Receive Messages
+User provides URL → Auto-detect Protocol → Create Protocol Adapter → Communicate (black-box)
 ```
 
 ## Quick Start
@@ -23,9 +41,9 @@ User provides URL → Analyze & Detect Protocol → Create Adapter → Send/Rece
 ```python
 from agent_proxy import AgentProxy
 
-# Just give it a URL - it figures out the rest
+# Just give it a URL - it figures out the protocol automatically
 proxy = AgentProxy()
-proxy.connect("http://localhost:8080/chat")  # or any agent URL
+proxy.connect("http://localhost:8080/chat")  # ANY agent URL
 
 # Now Claude Code speaks AS the user
 response = proxy.say("Hello, I need help with Python")
@@ -36,15 +54,16 @@ print(proxy.history)
 proxy.close()
 ```
 
-## Supported Agent Types
+## Supported Agent Types (Auto-detected)
 
-The skill auto-detects these patterns:
+The skill auto-detects these communication patterns:
 
 | URL Pattern | Detection | Method |
 |-------------|-----------|--------|
 | `*/v1/chat/completions` | OpenAI-compatible API | POST JSON |
 | `*/v1/messages` | Anthropic API | POST JSON |
 | `*/api/chat`, `*/api/generate` | Ollama/LLM APIs | POST JSON |
+| `*/api/sessions`, `*/api/ws` | REST+WebSocket API | REST + WebSocket |
 | `ws://`, `wss://` | WebSocket | WS messages |
 | Gradio apps | Gradio API | gradio_client |
 | Streamlit apps | Streamlit | HTTP/WS |

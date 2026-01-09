@@ -13,15 +13,17 @@ Requires: pip install playwright && playwright install
 
 import time
 import re
+import logging # Import logging
 from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 
 try:
-    from playwright.sync_api import sync_playwright, Page, Browser, BrowserContext
+    from playwright.sync_api import sync_playwright, Page, Browser, BrowserContext, TimeoutError as PlaywrightTimeoutError
     PLAYWRIGHT_AVAILABLE = True
 except ImportError:
     PLAYWRIGHT_AVAILABLE = False
 
+logger = logging.getLogger(__name__) # Initialize logger
 
 @dataclass
 class WebUIConfig:
@@ -88,6 +90,17 @@ KNOWN_WEB_UIS: Dict[str, WebUIConfig] = {
         login_required=False,
         extra_wait=2.0,
     ),
+    # Add Magentic-UI configuration
+    "magentic_ui": WebUIConfig(
+        name="Magentic-UI",
+        url_pattern=r"localhost:8082", # Assuming it runs on localhost:8082
+        input_selector='textarea[placeholder="Type your message here..."]',
+        submit_selector='button[aria-label="Submit"]', # Based on previous observation
+        response_selector='.message-bubble.assistant', # Adjust based on actual UI
+        wait_for_response='.message-bubble.assistant',
+        login_required=False,
+        extra_wait=3.0,
+    ),
 }
 
 
@@ -110,7 +123,9 @@ class BrowserAdapter:
         self.config: Optional[WebUIConfig] = None
         self.custom_config: Dict[str, Any] = {}
         self.conversation_history: List[Dict[str, str]] = []
-    
+        self.logger = logging.getLogger(__name__) # Use specific logger
+
+
     def connect(self, url: str, config: Dict[str, Any] = None) -> str:
         """
         Connect to a web UI.
@@ -132,77 +147,68 @@ class BrowserAdapter:
         
         # Detect which UI this is
         self.config = self._detect_web_ui(url)
-        
+        if not self.config:
+            self.logger.warning(f"Could not auto-detect web UI for {url}. Using generic selectors.")
+            self.config = WebUIConfig(
+                name="Generic Web UI",
+                url_pattern=url,
+                input_selector=config.get("input_selector", 'textarea[placeholder*="message" i], div[contenteditable="true"]'),
+                submit_selector=config.get("submit_selector", 'button[type="submit"], button[aria-label*="send" i]'),
+                response_selector=config.get("response_selector", '.message-bubble.assistant, .response-container'),
+                wait_for_response=config.get("response_selector", '.message-bubble.assistant, .response-container'),
+                login_required=False,
+                extra_wait=2.0,
+            )
+
+        self.logger.info(f"Connecting to {self.config.name} at {url}")
+
         # Start browser
         self.playwright = sync_playwright().start()
         
         # Use persistent context if user_data_dir provided (keeps login)
         user_data_dir = config.get("user_data_dir")
         
-        # Default to headless mode unless explicitly set to visible
+        # If we have a saved profile, default to headless (already logged in)
+        # Otherwise, show browser for manual login
         headless = config.get("headless")
         if headless is None:
-            headless = True  # Default: headless mode
+            headless = bool(user_data_dir)  # Auto: headless if profile exists
+        
+        # Use system Chrome instead of Chromium to avoid Google's bot detection
+        use_chrome = config.get("use_chrome", True)  # Default to Chrome
+        channel = "chrome" if use_chrome else None
 
-        # Browser type selection: chromium, firefox, webkit, chrome
-        browser_type = config.get("browser_type", "firefox")  # Default to Firefox to avoid confusion with user's Chrome
+        # Anti-detection arguments
+        browser_args = [
+            "--disable-blink-features=AutomationControlled",
+            "--disable-infobars",
+            "--no-first-run",
+            "--no-default-browser-check",
+        ]
+        
+        # Add slow_mo for debugging visible browser
+        slow_mo = config.get("slow_mo", 100) if not headless else 0
 
-        # Get the appropriate browser engine
-        if browser_type == "firefox":
-            browser_engine = self.playwright.firefox
-            channel = None
-            browser_args = []  # Firefox doesn't use same args as Chromium
-        elif browser_type == "webkit":
-            browser_engine = self.playwright.webkit
-            channel = None
-            browser_args = []
-        elif browser_type == "chrome":
-            browser_engine = self.playwright.chromium
-            channel = "chrome"  # Use system Chrome
-            browser_args = [
-                "--disable-blink-features=AutomationControlled",
-                "--disable-infobars",
-                "--no-first-run",
-                "--no-default-browser-check",
-            ]
-        else:  # chromium (default Playwright Chromium)
-            browser_engine = self.playwright.chromium
-            channel = None
-            browser_args = [
-                "--disable-blink-features=AutomationControlled",
-                "--disable-infobars",
-                "--no-first-run",
-                "--no-default-browser-check",
-            ]
 
-        # Launch browser with appropriate settings
         if user_data_dir:
-            launch_kwargs = {
-                "headless": headless,
-                "viewport": {"width": 1280, "height": 800},
-            }
-            if channel:
-                launch_kwargs["channel"] = channel
-            if browser_args:
-                launch_kwargs["args"] = browser_args
-                launch_kwargs["ignore_default_args"] = ["--enable-automation"]
-
-            self.context = browser_engine.launch_persistent_context(
+            self.context = self.playwright.chromium.launch_persistent_context(
                 user_data_dir,
-                **launch_kwargs
+                headless=headless,
+                channel=channel,
+                viewport={"width": 1280, "height": 800},
+                args=browser_args,
+                ignore_default_args=["--enable-automation"],
+                slow_mo=slow_mo,
             )
             self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
         else:
-            launch_kwargs = {
-                "headless": headless,
-            }
-            if channel:
-                launch_kwargs["channel"] = channel
-            if browser_args:
-                launch_kwargs["args"] = browser_args
-                launch_kwargs["ignore_default_args"] = ["--enable-automation"]
-
-            self.browser = browser_engine.launch(**launch_kwargs)
+            self.browser = self.playwright.chromium.launch(
+                headless=headless,
+                channel=channel,
+                args=browser_args,
+                ignore_default_args=["--enable-automation"],
+                slow_mo=slow_mo,
+            )
             self.context = self.browser.new_context(
                 viewport={"width": 1280, "height": 800},
             )
@@ -217,37 +223,40 @@ class BrowserAdapter:
             """)
         
         # Navigate to URL (use domcontentloaded for dynamic SPAs like Gemini)
+        self.logger.info(f"Navigating to {url}...")
         self.page.goto(url, wait_until="domcontentloaded", timeout=60000)
+        self.page.wait_for_load_state("networkidle") # Wait for network to settle
         
         # Wait a bit for dynamic content
         time.sleep(2)
         
-        ui_name = self.config.name if self.config else "Unknown Web UI"
+        ui_name = self.config.name
         
         # Check if already logged in
         is_logged_in = self._check_if_logged_in()
         
         if is_logged_in:
             return f"✅ Connected to {ui_name} (already logged in)"
-        elif user_data_dir:
+        elif user_data_dir and self.config.login_required:
             return f"⚠️ Connected to {ui_name}, but login may be required. Use wait_for_login() if needed."
         else:
-            return f"✅ Connected to {ui_name}. Please login in the browser window, then call wait_for_login()."
+            return f"✅ Connected to {ui_name}. No login required or already logged in."
     
     def _check_if_logged_in(self) -> bool:
         """Check if user is already logged in by looking for input field."""
+        if not self.page:
+            return False
+        
         input_selector = self.custom_config.get("input_selector") or \
                         (self.config.input_selector if self.config else "textarea")
         
-        selectors = input_selector.split(", ")
-        
-        for sel in selectors:
-            try:
-                elem = self.page.query_selector(sel.strip())
-                if elem and elem.is_visible():
-                    return True
-            except:
-                continue
+        # Try to find an editable input. If found, assume logged in.
+        try:
+            elem = self.page.query_selector(input_selector)
+            if elem and elem.is_visible() and elem.is_editable():
+                return True
+        except PlaywrightTimeoutError:
+            pass # Selector not found, not logged in
         
         return False
     
@@ -256,9 +265,11 @@ class BrowserAdapter:
         # First, check known UIs
         for key, config in KNOWN_WEB_UIS.items():
             if re.search(config.url_pattern, url, re.IGNORECASE):
+                self.logger.info(f"Detected known Web UI: {config.name}")
                 return config
 
         # For unknown UIs, try auto-detection
+        self.logger.info(f"No known Web UI detected for {url}. Attempting auto-detection.")
         return self._auto_detect_chat_ui()
 
     def _auto_detect_chat_ui(self) -> Optional[WebUIConfig]:
@@ -289,8 +300,9 @@ class BrowserAdapter:
         for sel in input_candidates:
             try:
                 elem = self.page.query_selector(sel)
-                if elem and elem.is_visible():
+                if elem and elem.is_visible() and elem.is_editable():
                     detected["input_selector"] = sel
+                    self.logger.debug(f"Auto-detected input selector: {sel}")
                     break
             except:
                 pass
@@ -303,19 +315,23 @@ class BrowserAdapter:
             'button:has-text("Send")',
             'button:has-text("Submit")',
             'button:has(svg)',  # Icon button near input
+            'button:has-text("Run")', # For Magentic-UI
+            'button:has-text("开始")', # For Magentic-UI
         ]
 
         for sel in submit_candidates:
             try:
                 elem = self.page.query_selector(sel)
-                if elem and elem.is_visible():
+                if elem and elem.is_visible() and elem.is_enabled():
                     detected["submit_selector"] = sel
+                    self.logger.debug(f"Auto-detected submit selector: {sel}")
                     break
             except:
                 pass
 
         # Common response container patterns
         response_candidates = [
+            '.message-bubble.assistant', # For Magentic-UI
             '[class*="message" i][class*="bot" i]',
             '[class*="message" i][class*="assistant" i]',
             '[class*="response" i]',
@@ -330,6 +346,7 @@ class BrowserAdapter:
                 elems = self.page.query_selector_all(sel)
                 if elems:
                     detected["response_selector"] = sel
+                    self.logger.debug(f"Auto-detected response selector: {sel}")
                     break
             except:
                 pass
@@ -341,8 +358,8 @@ class BrowserAdapter:
                 url_pattern=".*",  # Match any
                 input_selector=detected["input_selector"],
                 submit_selector=detected["submit_selector"] or 'button[type="submit"]',
-                response_selector=detected["response_selector"] or '[class*="message"]',
-                wait_for_response=detected["response_selector"] or '[class*="message"]',
+                response_selector=detected["response_selector"] or '.message-bubble.assistant, .response-container',
+                wait_for_response=detected["response_selector"] or '.message-bubble.assistant, .response-container',
                 login_required=False,
                 extra_wait=3.0,
             )
@@ -365,9 +382,10 @@ class BrowserAdapter:
         
         # Check if already logged in
         if self._check_if_logged_in():
+            self.logger.info("Already logged in, ready to chat!")
             return "✅ Already logged in, ready to chat!"
         
-        print(f"⏳ Waiting for login (up to {timeout}s)... Please login in the browser window.")
+        self.logger.info(f"Waiting for login (up to {timeout}s)... Please login in the browser window.")
         
         # Wait for input field to appear (indicates logged in)
         input_selector = self.custom_config.get("input_selector") or \
@@ -375,9 +393,14 @@ class BrowserAdapter:
         
         try:
             self.page.wait_for_selector(input_selector, timeout=timeout * 1000)
+            self.logger.info("Login detected, ready to chat!")
             return "✅ Login detected, ready to chat!"
-        except:
+        except PlaywrightTimeoutError:
+            self.logger.warning("Login timeout. You may need to login manually.")
             return "⚠️ Login timeout. You may need to login manually."
+        except Exception as e:
+            self.logger.error(f"Error while waiting for login: {e}")
+            return f"❌ Error during login wait: {e}"
     
     def send_message(self, message: str) -> str:
         """
@@ -392,6 +415,8 @@ class BrowserAdapter:
         if not self.page:
             raise RuntimeError("Not connected. Call connect() first.")
         
+        self.logger.info(f"Sending message: '{message[:50]}...'")
+
         # Get selectors
         input_sel = self.custom_config.get("input_selector") or \
                    (self.config.input_selector if self.config else "textarea")
@@ -399,6 +424,7 @@ class BrowserAdapter:
                     (self.config.submit_selector if self.config else None)
         response_sel = self.custom_config.get("response_selector") or \
                       (self.config.response_selector if self.config else ".response")
+        extra_wait = self.config.extra_wait
         
         # Count existing responses to detect new one
         existing_responses = self.page.query_selector_all(response_sel)
@@ -407,21 +433,27 @@ class BrowserAdapter:
         # Find and fill input
         input_elem = self._find_input_element(input_sel)
         if not input_elem:
+            self.logger.error(f"Could not find input element: {input_sel}")
+            # Take screenshot before raising error
+            self.screenshot(f"debug_no_input_{time.time()}.png")
             raise RuntimeError(f"Could not find input element: {input_sel}")
         
         # Clear and type message
+        self.logger.debug("Typing message...")
         self._type_message(input_elem, message)
         
         # Submit
+        self.logger.debug("Submitting message...")
         self._submit_message(submit_sel)
         
-        # Wait for response
-        response = self._wait_for_response(response_sel, initial_count)
+        # Wait for response and handle approval buttons DURING the wait
+        response = self._wait_for_response_and_approval(response_sel, initial_count, extra_wait)
         
         # Record in history
         self.conversation_history.append({"role": "user", "content": message})
         self.conversation_history.append({"role": "assistant", "content": response})
         
+        self.logger.info(f"Received response: '{response[:50]}...'")
         return response
     
     def _find_input_element(self, selector: str):
@@ -430,31 +462,39 @@ class BrowserAdapter:
         
         for sel in selectors:
             try:
+                self.logger.debug(f"Trying input selector: {sel}")
                 elem = self.page.wait_for_selector(sel.strip(), timeout=5000)
-                if elem:
+                if elem and elem.is_visible() and elem.is_editable():
+                    self.logger.debug(f"Found editable input: {sel}")
                     return elem
-            except:
+            except PlaywrightTimeoutError:
+                self.logger.debug(f"Input selector {sel} not found or not editable within timeout.")
                 continue
+            except Exception as e:
+                self.logger.debug(f"Error with input selector {sel}: {e}")
         
         return None
     
     def _type_message(self, input_elem, message: str):
         """Type message into the input element."""
         try:
-            # Try clicking first
+            self.logger.debug("Clicking input element.")
             input_elem.click()
             time.sleep(0.3)
             
-            # Clear existing content
+            self.logger.debug("Clearing existing content.")
             self.page.keyboard.press("Control+a")
             time.sleep(0.1)
             
-            # Type the message
+            self.logger.debug("Filling message.")
             input_elem.fill(message)
-        except:
-            # Fallback: try typing directly
+            time.sleep(0.5) # Give UI time to register fill
+        except Exception as e:
+            self.logger.error(f"Error filling input element: {e}. Trying fallback type.")
+            # Fallback: try typing directly if fill fails
             input_elem.click()
             self.page.keyboard.type(message, delay=10)
+            time.sleep(0.5)
     
     def _submit_message(self, submit_sel: Optional[str]):
         """Submit the message."""
@@ -465,34 +505,94 @@ class BrowserAdapter:
             selectors = submit_sel.split(", ")
             for sel in selectors:
                 try:
+                    self.logger.debug(f"Trying submit selector: {sel}")
                     btn = self.page.query_selector(sel.strip())
                     if btn and btn.is_visible() and btn.is_enabled():
+                        self.logger.info(f"Clicking submit button: {sel}")
                         btn.click()
                         submitted = True
                         break
-                except:
+                except Exception as e:
+                    self.logger.debug(f"Submit selector {sel} failed: {e}")
                     continue
         
         # Fallback to Enter key
         if not submitted:
+            self.logger.warning("No submit button found or clicked. Pressing Enter.")
             self.page.keyboard.press("Enter")
         
-        time.sleep(0.5)
-    
-    def _wait_for_response(self, response_sel: str, initial_count: int, timeout: int = 120) -> str:
-        """Wait for and extract the response using multiple detection methods."""
+        time.sleep(1.0) # Give some time for submission to register
+
+    def _wait_for_response_and_approval(self, response_sel: str, initial_count: int, extra_wait: float, timeout: int = 120) -> str:
+        """Wait for and extract the response, while also monitoring for approval buttons."""
         start_time = time.time()
+        last_response_text = ""
+        last_check_time = time.time()
+        
+        self.logger.info("Waiting for agent response and monitoring for approval buttons...")
 
         while time.time() - start_time < timeout:
-            responses = self.page.query_selector_all(response_sel)
+            # Check for approval buttons periodically
+            if time.time() - last_check_time > 1.0: # Check every 1 second
+                if self._click_approval_button():
+                    self.logger.info("Approval button clicked, continuing to monitor response.")
+                last_check_time = time.time()
 
+            responses = self.page.query_selector_all(response_sel)
+            
             if len(responses) > initial_count:
                 # New response appeared, use smart completion detection
-                return self._wait_for_completion(response_sel, start_time, timeout)
+                self.logger.debug("New response detected, waiting for completion.")
+                last_response_text = self._wait_for_completion(response_sel, start_time, timeout)
+                
+                # After completion, check for approval buttons one last time
+                self._click_approval_button()
+                
+                # Add extra wait for dynamic UIs
+                time.sleep(extra_wait)
+                return last_response_text
 
             time.sleep(0.5)
 
-        raise TimeoutError("No response received within timeout")
+        self.logger.warning("Response timeout. No new response received within timeout.")
+        return last_response_text if last_response_text else "No response received within timeout."
+
+    def _click_approval_button(self) -> bool:
+        """Attempts to click a common approval button if one is found and visible and enabled."""
+        accept_patterns = [
+            'button:has-text("Accept")',
+            'button:has-text("Confirm")',
+            'button:has-text("Approve")',
+            'button:has-text("Yes")',
+            'button:has-text("OK")',
+            'button:has-text("Allow")',
+            'button:has-text("Run")',
+            'button:has-text("Execute")',
+            'button:has-text("Continue")',
+            'button:has-text("允许")',
+            'button:has-text("确认")',
+            'button:has-text("接受")',
+            'button[aria-label*="accept" i]',
+            'button[aria-label*="confirm" i]',
+            'button[aria-label*="approve" i]',
+            'button[type="button"][class*="MuiButton-root"]', # Generic button for frameworks like MUI
+        ]
+
+        for pattern in accept_patterns:
+            try:
+                buttons = self.page.query_selector_all(pattern)
+                for button in buttons:
+                    if button and button.is_visible() and button.is_enabled():
+                        text = button.inner_text() or button.get_attribute("aria-label")
+                        self.logger.info(f"Automatically clicking approval button: '{text}' (Pattern: {pattern})")
+                        button.click()
+                        time.sleep(0.5) # Give UI time to react
+                        return True
+            except PlaywrightTimeoutError:
+                continue # Button not present yet, or disappeared
+            except Exception as e:
+                self.logger.debug(f"Error while checking/clicking approval button '{pattern}': {e}")
+        return False
 
     def _wait_for_completion(self, response_sel: str, start_time: float, timeout: int) -> str:
         """
@@ -501,10 +601,12 @@ class BrowserAdapter:
         """
         last_text = ""
         stable_count = 0
-        min_stable_checks = 2  # Require 2 consecutive stable checks
+        min_stable_checks = 3  # Require 3 consecutive stable checks for robustness
+
+        self.logger.debug("Monitoring response completion...")
 
         while time.time() - start_time < timeout:
-            time.sleep(1.0)
+            time.sleep(1.0) # Check every second
 
             # Method 1: Check if send button is re-enabled (universal signal)
             send_btn_ready = self._is_send_button_ready()
@@ -520,26 +622,26 @@ class BrowserAdapter:
 
             text_stable = bool(current_text and current_text == last_text)
 
-            # Completion conditions (any combination):
-            # 1. Text stable + send button ready
-            # 2. Text stable + not loading
-            # 3. Text stable for 3+ seconds (fallback)
+            self.logger.debug(f"Completion check: stable={text_stable} ({stable_count}), send_ready={send_btn_ready}, not_loading={not_loading}, current_text='{current_text[:50]}...'")
+
             if text_stable:
                 stable_count += 1
 
                 # Strong signal: button ready or not loading
-                if stable_count >= 1 and (send_btn_ready or not_loading):
+                if stable_count >= min_stable_checks and (send_btn_ready or not_loading):
+                    self.logger.info("Response completion detected (stable text + send button ready/no loading).")
                     return current_text
 
                 # Fallback: just text stability for longer time
-                if stable_count >= min_stable_checks + 1:
+                if stable_count >= min_stable_checks + 2: # Wait a bit longer for text stability alone
+                    self.logger.info("Response completion detected (text stable for extended period).")
                     return current_text
             else:
                 stable_count = 0
                 last_text = current_text
 
-        # Timeout fallback
-        return last_text if last_text else ""
+        self.logger.warning("Response completion timeout. Returning latest text.")
+        return last_text if last_text else "Response completion timeout."
 
     def _is_send_button_ready(self) -> bool:
         """Check if send button is enabled (indicates agent finished)."""
@@ -551,15 +653,17 @@ class BrowserAdapter:
 
         for sel in submit_sel.split(", "):
             try:
-                btn = self.page.query_selector(sel.strip())
+                btn = self.page.query_for_selector(sel.strip(), state="attached", timeout=100) # Quick check
                 if btn:
                     # Check if button is enabled
                     is_disabled = btn.get_attribute("disabled")
                     aria_disabled = btn.get_attribute("aria-disabled")
                     if not is_disabled and aria_disabled != "true":
                         return True
-            except:
-                pass
+            except PlaywrightTimeoutError:
+                pass # Selector not found quickly
+            except Exception as e:
+                self.logger.debug(f"Error checking send button {sel}: {e}")
         return False
 
     def _is_loading_complete(self) -> bool:
@@ -585,33 +689,10 @@ class BrowserAdapter:
     
     def _wait_for_streaming_complete(self, timeout: int = 60):
         """Wait for streaming response to complete."""
-        if not self.config:
-            return
-        
-        # Check for streaming indicators and wait for them to disappear
-        streaming_indicators = [
-            '[data-is-streaming="true"]',
-            '.streaming',
-            '.loading',
-            '.typing-indicator',
-        ]
-        
-        start = time.time()
-        while time.time() - start < timeout:
-            is_streaming = False
-            for indicator in streaming_indicators:
-                try:
-                    elem = self.page.query_selector(indicator)
-                    if elem and elem.is_visible():
-                        is_streaming = True
-                        break
-                except:
-                    pass
-            
-            if not is_streaming:
-                break
-            
-            time.sleep(0.5)
+        # This function might be redundant with _wait_for_completion,
+        # but is kept for specific streaming use cases if needed.
+        self.logger.warning("'_wait_for_streaming_complete' called, consider integrating into _wait_for_completion.")
+        time.sleep(self.config.extra_wait) # Use the extra wait from config
     
     def get_history(self) -> List[Dict[str, str]]:
         """Get conversation history."""
@@ -622,12 +703,19 @@ class BrowserAdapter:
         self.conversation_history = []
         if self.page:
             self.page.reload()
-            time.sleep(2)
+            time.sleep(self.config.extra_wait) # Wait after reload
+        self.logger.info("Conversation reset.")
     
     def screenshot(self, path: str):
         """Take a screenshot for debugging."""
         if self.page:
-            self.page.screenshot(path=path)
+            try:
+                self.page.screenshot(path=path)
+                self.logger.info(f"Screenshot saved to {path}")
+            except PlaywrightTimeoutError:
+                self.logger.warning(f"Screenshot timeout for {path}")
+            except Exception as e:
+                self.logger.error(f"Error taking screenshot to {path}: {e}")
     
     def close(self):
         """Close the browser."""
@@ -639,6 +727,7 @@ class BrowserAdapter:
             self.browser.close()
         if self.playwright:
             self.playwright.stop()
+        self.logger.info("Browser closed.")
 
 
 class WebUIProxy:
@@ -659,6 +748,7 @@ class WebUIProxy:
     def __init__(self):
         self.adapter = BrowserAdapter()
         self._connected = False
+        self.logger = logging.getLogger(__name__) # Use specific logger
     
     def connect(self, url: str, headless: bool = False, user_data_dir: str = None) -> str:
         """
@@ -680,17 +770,23 @@ class WebUIProxy:
         
         result = self.adapter.connect(url, config)
         self._connected = True
+        self.logger.info(f"WebUIProxy connected status: {result}")
         return result
     
     def wait_for_login(self, timeout: int = 300) -> str:
         """Wait for login to complete."""
-        return self.adapter.wait_for_login(timeout)
+        result = self.adapter.wait_for_login(timeout)
+        self.logger.info(f"Login status: {result}")
+        return result
     
     def say(self, message: str) -> str:
         """Send a message and get response."""
         if not self._connected:
             raise RuntimeError("Not connected. Call connect() first.")
-        return self.adapter.send_message(message)
+        self.logger.info(f"WebUIProxy sending message: '{message[:50]}...'")
+        response = self.adapter.send_message(message)
+        self.logger.info(f"WebUIProxy received response: '{response[:50]}...'")
+        return response
     
     @property
     def history(self) -> List[Dict[str, str]]:
@@ -705,6 +801,7 @@ class WebUIProxy:
         """Close the browser."""
         self.adapter.close()
         self._connected = False
+        self.logger.info("WebUIProxy closed.")
 
 
 # CLI interface

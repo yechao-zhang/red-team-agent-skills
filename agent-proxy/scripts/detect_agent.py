@@ -228,17 +228,23 @@ class AgentDetector:
         # Check response headers
         content_type = response.headers.get("Content-Type", "")
         server = response.headers.get("Server", "")
-        
+
         # Check for JSON API
         if "application/json" in content_type:
             return self._analyze_json_api(url, response, hints, notes)
-        
-        # Check for HTML (Web UI)
+
+        # Try common API endpoints FIRST before checking HTML UI
+        # This allows detecting REST+WebSocket APIs that also serve HTML frontends
+        api_result = self._try_common_endpoints(base_url, hints, notes)
+        if api_result.success and api_result.confidence > 0.5:
+            return api_result
+
+        # Check for HTML (Web UI) as fallback
         if "text/html" in content_type:
             return self._analyze_html_ui(url, base_url, response, hints, notes)
-        
-        # Try common API endpoints
-        return self._try_common_endpoints(base_url, hints, notes)
+
+        # Return API result even if low confidence
+        return api_result
     
     def _analyze_json_api(self, url: str, response, hints: Dict, notes: List) -> DetectionResult:
         """Analyze a JSON API response."""
@@ -327,45 +333,68 @@ class AgentDetector:
             "/api/chat",
             "/api/generate",
             "/api/v1/chat",
+            "/api/sessions",  # REST+WebSocket pattern
+            "/api/ws",        # REST+WebSocket pattern
             "/chat",
             "/docs",
             "/openapi.json",
         ]
-        
+
+        found_endpoints = {}
+
         for path in common_paths:
             try:
                 test_url = urljoin(base_url, path)
                 resp = self.session.get(test_url, timeout=5)
-                
-                if resp.status_code == 200:
-                    notes.append(f"Found endpoint: {path}")
-                    
-                    # Determine type from path
-                    if "chat/completions" in path or "models" in path:
-                        return DetectionResult(
-                            success=True,
-                            agent_type="openai_api",
-                            endpoint=urljoin(base_url, "/v1/chat/completions"),
-                            config=self._get_default_config("openai_api", base_url),
-                            confidence=0.8,
-                            notes=notes
-                        )
-                    elif "api/chat" in path or "api/generate" in path:
-                        return DetectionResult(
-                            success=True,
-                            agent_type="ollama",
-                            endpoint=test_url,
-                            config=self._get_default_config("ollama", base_url),
-                            confidence=0.8,
-                            notes=notes
-                        )
-                    elif "openapi" in path or "docs" in path:
-                        notes.append("Found API documentation")
-                        # Could parse OpenAPI spec here
-                        
+
+                if resp.status_code in (200, 405, 422):  # 405=Method Not Allowed (POST only), 422=Validation Error
+                    found_endpoints[path] = resp.status_code
+                    notes.append(f"Found endpoint: {path} ({resp.status_code})")
+
             except:
                 continue
-        
+
+        # Check for REST+WebSocket pattern (sessions + websocket endpoints)
+        if "/api/sessions" in found_endpoints or "/api/ws" in found_endpoints:
+            notes.append("Detected REST+WebSocket API pattern")
+            return DetectionResult(
+                success=True,
+                agent_type="rest_websocket_api",
+                endpoint=base_url,
+                config={
+                    "protocol": "rest_websocket",
+                    "base_url": base_url,
+                    "session_endpoint": "/api/sessions",
+                    "ws_endpoint_pattern": "/api/ws",  # Will be discovered dynamically
+                },
+                confidence=0.85,
+                notes=notes
+            )
+
+        # Check for standard API patterns
+        if "/v1/chat/completions" in found_endpoints or "/v1/models" in found_endpoints:
+            return DetectionResult(
+                success=True,
+                agent_type="openai_api",
+                endpoint=urljoin(base_url, "/v1/chat/completions"),
+                config=self._get_default_config("openai_api", base_url),
+                confidence=0.8,
+                notes=notes
+            )
+
+        if "/api/chat" in found_endpoints or "/api/generate" in found_endpoints:
+            return DetectionResult(
+                success=True,
+                agent_type="ollama",
+                endpoint=urljoin(base_url, "/api/chat"),
+                config=self._get_default_config("ollama", base_url),
+                confidence=0.8,
+                notes=notes
+            )
+
+        if "/openapi.json" in found_endpoints or "/docs" in found_endpoints:
+            notes.append("Found API documentation endpoint")
+
         return DetectionResult(
             success=False,
             agent_type="unknown",
