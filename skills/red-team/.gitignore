@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Browser profiles (contain login data)
+*-profile/
+
+# Screenshots
+*.png
+screenshots/
+
+# Logs
+*.log
+conversation_*.json
+
+# Distribution
+dist/
+build/
+*.egg-info/
