@@ -1,0 +1,22 @@
+# Red Team Agent - Dependencies
+
+# Agent communication (reuse agent-proxy)
+# Note: agent-proxy should be installed as a separate skill
+# We import it directly from the skills directory
+
+# LLM for analyzing responses and generating adaptive payloads
+anthropic>=0.40.0
+openai>=1.0.0
+
+# Schema validation and analysis
+jsonschema>=4.20.0
+pydantic>=2.0.0
+
+# Text analysis
+regex>=2023.0.0
+
+# Configuration
+pyyaml>=6.0.0
+
+# Logging and reporting
+rich>=13.0.0

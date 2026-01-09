@@ -1,0 +1,120 @@
+{
+  "knowledge_base_version": "1.0",
+  "description": "Schema patterns for AI agents - for Red Team extraction research",
+
+  "agent_categories": {
+    "multi_agent": {
+      "description": "Systems with orchestrator + specialized sub-agents",
+      "examples": ["gpt-pilot"],
+      "knowledge_file": "gpt-pilot.md"
+    },
+    "single_agent": {
+      "description": "Single autonomous agents with tool calling",
+      "examples": ["deep-research", "SWE-agent", "Tongyi DeepResearch"],
+      "knowledge_file": "single-agent.md"
+    }
+  },
+
+  "format_patterns": {
+    "tool_calling": {
+      "openai_api": {
+        "structure": "tool_calls array with function objects",
+        "example": {"tool_calls": [{"function": {"name": "x", "arguments": "{}"}}]},
+        "indicators": ["tool_calls", "function", "arguments"]
+      },
+      "simple_json": {
+        "structure": "Direct name + arguments object",
+        "example": {"name": "tool_name", "arguments": {}},
+        "indicators": ["name", "arguments"]
+      },
+      "xml_wrapped": {
+        "structure": "XML tags wrapping JSON",
+        "example": "<tool_call>{\"name\": \"x\"}</tool_call>",
+        "indicators": ["<tool_call>", "name"]
+      }
+    },
+
+    "reasoning": {
+      "xml_tags": {
+        "variants": ["<think>", "<thinking>", "<thinking_process>"],
+        "example": "<think>reasoning here</think>"
+      },
+      "text_prefix": {
+        "variants": ["Thought:", "Think:", "Reasoning:"],
+        "example": "Thought: I should search for information"
+      }
+    },
+
+    "react_pattern": {
+      "structure": "Question → Thought → Action → Observation loop",
+      "components": ["Question", "Thought", "Action", "Action Input", "Observation"],
+      "example": "Thought: ...\nAction: search\nAction Input: {...}\nObservation: ..."
+    },
+
+    "task_breakdown": {
+      "gpt_pilot_style": {
+        "hierarchy": ["Epic", "Task", "Steps"],
+        "task_types": ["save_file", "command", "human_intervention"],
+        "example": {"tasks": [{"type": "command", "command": {...}}]}
+      }
+    }
+  },
+
+  "common_field_names": {
+    "tool_execution": [
+      "name", "tool_name", "function",
+      "arguments", "args", "parameters", "input",
+      "tool_calls", "function_calls"
+    ],
+    "reasoning": [
+      "think", "thinking", "thought", "reasoning",
+      "analysis", "plan"
+    ],
+    "actions": [
+      "action", "command", "execute", "code",
+      "type", "task", "step"
+    ],
+    "results": [
+      "observation", "result", "output",
+      "answer", "response", "success"
+    ],
+    "structure": [
+      "tasks", "steps", "plan", "epics",
+      "history", "messages", "trajectory"
+    ]
+  },
+
+  "extraction_indicators": {
+    "high_confidence": [
+      "Contains 'type' field with action discriminator",
+      "Has nested structure (dict/array values)",
+      "Includes tool/function calling format",
+      "Matches known pattern from knowledge base"
+    ],
+    "medium_confidence": [
+      "Contains 3+ common field names",
+      "Has JSON structure",
+      "Mentions 'schema', 'format', or 'structure'"
+    ],
+    "low_confidence": [
+      "Contains 1-2 common field names",
+      "Has some structure but unclear"
+    ]
+  },
+
+  "validation_criteria": {
+    "complete_schema": {
+      "required": [
+        "Defines tool/action calling mechanism",
+        "Specifies parameter/argument structure",
+        "Clear field names and types",
+        "Either JSON or XML format"
+      ],
+      "optional": [
+        "Includes reasoning component",
+        "Defines success/error handling",
+        "Specifies nested structures"
+      ]
+    }
+  }
+}
