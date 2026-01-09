@@ -1,23 +1,24 @@
 ---
 name: agent-proxy
 description: |
-  Auto-discover and communicate with any AI agent given its URL. Claude Code acts as the user,
-  automatically detecting the agent's interface (Web UI, REST API, WebSocket, etc.) and sending
-  messages on behalf of the user. Use when: (1) User provides a URL to an AI agent/chatbot,
-  (2) Need to automate conversations with external AI services, (3) Testing or evaluating agents,
-  (4) Building agent-to-agent communication pipelines. Supports local and remote agents.
+  Auto-discover and communicate with any AI agent given its URL via API.
+  Supports REST APIs (OpenAI, Anthropic, Ollama), WebSockets, and Gradio apps.
+  Claude Code acts as the user, automatically detecting the agent's API interface and sending messages.
+  Use when: (1) User provides an API endpoint URL, (2) Need to automate conversations with external AI services via API.
 ---
 
 # Agent Proxy Skill
 
-**Black-box agent communication**: Given a URL to any AI agent, this skill auto-discovers how to communicate with it and conducts conversations on the user's behalf.
+**Universal API Gateway**: Given a URL to any AI agent API, this skill auto-discovers the protocol (REST, WebSocket, Gradio) and conducts conversations.
 
 **Critical**: This works WITHOUT needing:
 - ❌ Access to the target agent's source code
 - ❌ The target agent's dependencies installed
 - ❌ Knowledge of the target agent's implementation
 
-You only need the agent's **URL**.
+You only need the agent's **API URL**.
+
+**Note on Web UIs**: For browser-based agents (ChatGPT, Gemini, etc.), please use the **`dev-browser`** skill or Red Team's **BrowserTransport** instead. This skill is strictly for APIs.
 
 ## Installation
 
@@ -25,15 +26,12 @@ You only need the agent's **URL**.
 # Install agent-proxy dependencies
 cd ~/.claude/skills/agent-proxy
 pip install -r requirements.txt
-
-# Optional: For browser automation (ChatGPT, Gemini, Claude, etc.):
-playwright install chromium
 ```
 
 ## Workflow
 
 ```
-User provides URL → Auto-detect Protocol → Create Protocol Adapter → Communicate (black-box)
+User provides URL → Auto-detect Protocol (API/WS) → Create Protocol Adapter → Communicate
 ```
 
 ## Quick Start
@@ -43,7 +41,7 @@ from agent_proxy import AgentProxy
 
 # Just give it a URL - it figures out the protocol automatically
 proxy = AgentProxy()
-proxy.connect("http://localhost:8080/chat")  # ANY agent URL
+proxy.connect("http://localhost:8080/v1/chat/completions")  # API Endpoint
 
 # Now Claude Code speaks AS the user
 response = proxy.say("Hello, I need help with Python")
@@ -66,27 +64,7 @@ The skill auto-detects these communication patterns:
 | `*/api/sessions`, `*/api/ws` | REST+WebSocket API | REST + WebSocket |
 | `ws://`, `wss://` | WebSocket | WS messages |
 | Gradio apps | Gradio API | gradio_client |
-| Streamlit apps | Streamlit | HTTP/WS |
-| HTML with chat input | Web UI | Browser automation |
 | Custom endpoints | Probe & detect | Auto-detect |
-
-### Web UI Support (Browser Automation)
-
-These popular chat UIs are automatically detected and accessed via Playwright:
-
-- **Google Gemini** (gemini.google.com)
-- **ChatGPT** (chat.openai.com, chatgpt.com)
-- **Claude** (claude.ai)
-- **Poe** (poe.com)
-- **HuggingFace Chat** (huggingface.co/chat)
-- **Perplexity** (perplexity.ai)
-- **Microsoft Copilot** (copilot.microsoft.com)
-
-Requirements for Web UI:
-```bash
-pip install playwright
-playwright install chromium
-```
 
 ## Usage Modes
 
@@ -94,7 +72,7 @@ playwright install chromium
 
 ```python
 proxy = AgentProxy()
-proxy.connect("https://some-agent.com/chat")  # Auto-detects protocol
+proxy.connect("https://api.some-agent.com/v1/chat")  # Auto-detects protocol
 response = proxy.say("Hello!")
 ```
 
@@ -109,37 +87,6 @@ proxy.connect("https://api.example.com/v1/chat", hints={
 })
 ```
 
-### Mode 3: Web UI Automation
-
-```python
-proxy = AgentProxy()
-proxy.connect("https://gemini.google.com", hints={
-    "user_data_dir": "~/.gemini-profile"  # Save login state
-})
-
-# Auto-detects if already logged in
-status = proxy.wait_for_login()  # Returns immediately if logged in
-
-response = proxy.say("What is 1+1?")
-```
-
-Command line:
-```bash
-# First time: Opens browser, waits for login, saves to profile
-python talk.py --url "https://gemini.google.com" --user-data-dir ~/.gemini-profile -m "Hello!"
-
-# Next time: Auto-detects login, runs headless (no browser window)
-python talk.py --url "https://gemini.google.com" --user-data-dir ~/.gemini-profile -m "1+1=?"
-
-# Force show browser window even with saved profile
-python talk.py --url "https://gemini.google.com" --user-data-dir ~/.gemini-profile --no-headless -i
-```
-
-**Login State Persistence:**
-- First run with `--user-data-dir`: Opens browser for manual login
-- Subsequent runs: Auto-detects saved login, runs in headless mode
-- No need to login again unless session expires
-
 ## Detection Process
 
 When given a URL, the skill:
@@ -152,7 +99,6 @@ When given a URL, the skill:
 2. **Identify protocol**
    - REST API → detect request/response format
    - WebSocket → establish WS connection
-   - Web UI → identify input elements
 
 3. **Create appropriate adapter**
    - Configure authentication if needed
