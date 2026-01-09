@@ -49,12 +49,6 @@ try:
 except ImportError:
     ASYNC_WS_AVAILABLE = False
 
-try:
-    from browser_adapter import BrowserAdapter, WebUIProxy, KNOWN_WEB_UIS
-    BROWSER_AVAILABLE = True
-except ImportError:
-    BROWSER_AVAILABLE = False
-
 
 @dataclass
 class Message:
@@ -120,7 +114,6 @@ class AgentProxy:
         self.session: Optional[requests.Session] = None
         self.ws: Any = None
         self.gradio_client: Any = None
-        self.browser_adapter: Optional[BrowserAdapter] = None  # For web UI automation
         self.rest_ws_session_id: Optional[int] = None  # For REST+WebSocket APIs
         self.rest_ws_conversation_id: Optional[int] = None
         self._connected = False
@@ -144,13 +137,6 @@ class AgentProxy:
         if "mode" in self.config and self.config["mode"] != "auto":
             return self.config["mode"]
         return self.detection.agent_type if self.detection else "unknown"
-    
-    @property
-    def page(self): # Type hint Page is causing import error without async context
-        """Returns the Playwright Page object if in web_ui mode."""
-        if self.browser_adapter:
-            return self.browser_adapter.page
-        return None
 
     def connect(self, url: str, hints: Dict[str, Any] = None) -> str:
         """
@@ -267,29 +253,8 @@ class AgentProxy:
             logger.info("REST+WebSocket API detected. Will use internal async runner for messaging.")
 
         elif agent_type in ("streamlit", "web_ui"):
-            # These require browser automation
-            if not BROWSER_AVAILABLE:
-                raise ImportError(
-                    "Browser automation required. Install with:\n"
-                    "  pip install playwright && playwright install chromium"
-                )
-            self.browser_adapter = BrowserAdapter()
-            browser_config = {
-                "headless": self.config.get("headless", True), # Default to headless
-                "user_data_dir": self.config.get("user_data_dir"),
-                "slow_mo": self.config.get("slow_mo", 100 if not self.config.get("headless") else 0), # Pass slow_mo
-                # Pass through custom selectors from hints
-                "input_selector": self.config.get("input_selector"),
-                "submit_selector": self.config.get("submit_selector"),
-                "response_selector": self.config.get("response_selector"),
-            }
-            logger.debug(f"Connecting BrowserAdapter with config: {browser_config}")
-            self.browser_adapter.connect(
-                self.config["endpoint"],
-                browser_config
-            )
-            logger.info(f"BrowserAdapter connected for {agent_type} mode.")
-    
+             raise ValueError(f"Agent type '{agent_type}' requires browser automation, which has been removed from agent-proxy. Please use the 'dev-browser' skill or Red Team's BrowserTransport instead.")
+
     def say(self, message: str) -> str:
         """
         Send a message as the user and get the agent's response.
@@ -326,7 +291,7 @@ class AgentProxy:
             elif agent_type == "gradio":
                 response = self._send_gradio(message)
             elif agent_type in ("web_ui", "streamlit"):
-                response = self._send_web_ui(message)
+                 raise ValueError(f"Agent type '{agent_type}' requires browser automation, which has been removed from agent-proxy. Please use the 'dev-browser' skill or Red Team's BrowserTransport instead.")
             else:
                 response = self._send_generic(message)
             
@@ -592,35 +557,7 @@ class AgentProxy:
                 except:
                     continue
             raise RuntimeError("Could not find Gradio API endpoint")
-    
-    def _send_web_ui(self, message: str) -> str:
-        """Send message via browser automation."""
-        if not self.browser_adapter:
-            raise RuntimeError("Browser adapter not initialized")
-        logger.info(f"Sending message via BrowserAdapter (web_ui): '{message[:50]}...'")
-        return self.browser_adapter.send_message(message)
-    
-    def wait_for_login(self, timeout: int = 300) -> str:
-        """
-        Wait for user to complete login (for web UIs that require auth).
-        
-        Args:
-            timeout: Max seconds to wait for login
-            
-        Returns:
-            Status message
-        """
-        if self.browser_adapter:
-            return self.browser_adapter.wait_for_login(timeout)
-        return "Login not required for this agent type"
-    
-    def screenshot(self, path: str = "debug_screenshot.png") -> str:
-        """Take a screenshot (for web UI debugging)."""
-        if self.browser_adapter:
-            self.browser_adapter.screenshot(path)
-            return f"Screenshot saved to {path}"
-        return "Screenshot only available for web UI agents"
-    
+
     def _send_generic(self, message: str) -> str:
         """Generic POST request for unknown APIs."""
         payload = {
@@ -651,8 +588,6 @@ class AgentProxy:
         """Reset conversation history."""
         if self.log:
             self.log.messages = []
-        if self.browser_adapter:
-            self.browser_adapter.reset() # Reset browser history
         return "Conversation reset"
     
     def export(self, filepath: str = None) -> str:
@@ -679,11 +614,7 @@ class AgentProxy:
         
         if self.gradio_client:
             self.gradio_client = None
-        
-        if self.browser_adapter:
-            self.browser_adapter.close()
-            self.browser_adapter = None
-        
+
         self._connected = False
         logger.info("Connection closed.")
         return "Connection closed"

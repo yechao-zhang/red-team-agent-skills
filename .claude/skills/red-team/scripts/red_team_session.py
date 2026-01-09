@@ -32,10 +32,23 @@ def save_state(state):
 
 def init(url, max_iterations):
     # Create run directory
-    timestamp = int(datetime.now().timestamp())
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     from urllib.parse import urlparse
-    hostname = urlparse(url).hostname or "unknown"
-    run_dir = current_dir.parent / "results" / f"run_{timestamp}_{hostname}"
+    parsed = urlparse(url)
+    hostname = parsed.hostname or "unknown"
+    port = parsed.port
+
+    # Try to determine a friendly name
+    agent_name = hostname
+    if port:
+        if port == 8082:
+            agent_name = "magentic_ui"
+        elif port == 3000:
+            agent_name = "agent_ui"
+        else:
+            agent_name = f"{hostname}_{port}"
+
+    run_dir = current_dir.parent / "results" / f"run_{timestamp}_{agent_name}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
     attack = ImprovedAdaptiveNestingAttack(

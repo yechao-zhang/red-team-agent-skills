@@ -8,9 +8,6 @@ requests>=2.31.0
 aiohttp>=3.9.0
 websockets>=12.0
 
-# Browser automation (for web UIs like ChatGPT, Gemini, etc.)
-playwright>=1.40.0
-
 # Gradio apps
 gradio-client>=0.8.0
 

@@ -198,10 +198,9 @@ class AgentDetector:
                             "endpoint": url,
                             "ui_name": ui_name,
                             "requires_browser": True,
-                            "requires_login": True,
                         },
                         confidence=0.95,
-                        notes=[f"Detected {ui_name} (requires browser automation)"]
+                        notes=[f"Detected {ui_name} (requires browser automation - use dev-browser skill)"]
                     )
         return None
     
@@ -478,7 +477,7 @@ class AgentDetector:
                 "requires_browser": True,
             },
         }
-        
+
         return configs.get(agent_type, {"endpoint": url})
     
     def _get_framework_config(self, framework: str, url: str, base_url: str) -> Dict[str, Any]:
