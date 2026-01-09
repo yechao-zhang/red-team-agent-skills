@@ -42,7 +42,9 @@ description: |
 │  │ STEP 1: Initialize (Python)                                            │ │
 │  │                                                                         │ │
 │  │  from adaptive_attack import AdaptiveNestingAttack                     │ │
+│  │  from transport import TransportFactory                                │ │
 │  │  attack = AdaptiveNestingAttack(target_url, max_iterations=10)         │ │
+│  │  transport = TransportFactory.create_auto(target_url)                  │ │
 │  └────────────────────────────────────────────────────────────────────────┘ │
 │                     │                                                        │
 │                     ↓                                                        │
@@ -56,8 +58,16 @@ description: |
 │  │                     │                                                   │ │
 │  │                     ↓                                                   │ │
 │  │  ┌──────────────────────────────────────────────────────────────────┐  │ │
-│  │  │ 2b. Send to Target (Native Skill)                                │  │ │
-│  │  │     /agent-proxy send {target_url} {payload}                     │  │ │
+│  │  │ 2b. Send to Target (Transport Layer)                             │  │ │
+│  │  │     instruction = transport.send(payload)                        │  │ │
+│  │  │                                                                   │  │ │
+│  │  │     ► If Web UI (BrowserTransport):                              │  │ │
+│  │  │       → Invokes 'dev-browser' or 'playwright-skill'              │  │ │
+│  │  │       → Handles login, input, adaptive approvals                 │  │ │
+│  │  │                                                                   │  │ │
+│  │  │     ► If API (AgentProxyTransport):                              │  │ │
+│  │  │       → Invokes 'agent-proxy' skill                              │  │ │
+│  │  │       → Handles HTTP/WebSocket/Gradio                            │  │ │
 │  │  │                                                                   │  │ │
 │  │  │     ┌─────────────────────────────────────┐                      │  │ │
 │  │  │     │         Target Agent                │                      │  │ │
@@ -103,10 +113,10 @@ description: |
 │  │                               │                                        │ │
 │  │                               └────────→ Loop to 2a                    │ │
 │  │                                                                         │ │
-│  └─────────────────────────────────────────────────────────────────────────┘ │
-│                                                                              │
-│  Return: {success, iterations, schema}                                      │
-└─────────────────────────────────────────────────────────────────────────────┘
+│  │  └─────────────────────────────────────────────────────────────────────────┘ │
+│  │                                                                              │
+│  │  Return: {success, iterations, schema}                                      │
+│  └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Hybrid Design
@@ -125,16 +135,33 @@ description: |
 
 ## Transport Layer (NEW)
 
-The skill now uses a unified transport layer that auto-detects the target type:
+The skill now uses a unified transport layer that auto-detects the target type and routes to the appropriate skill:
 
-| Target Type | Transport | Method |
-|-------------|-----------|--------|
-| Web UI (HTML with chat) | BrowserTransport | Playwright automation |
-| REST API | AgentProxyTransport | /agent-proxy skill |
-| WebSocket (ws://, wss://) | WebSocketTransport | Python asyncio |
-| Gradio App | AgentProxyTransport | /agent-proxy skill |
+| Target Type | Transport Class | Underlying Skill | Description |
+|-------------|-----------------|------------------|-------------|
+| **Web UI** (HTML) | `BrowserTransport` | `dev-browser` OR `playwright-skill` | **Direct Browser Control**. Handles login, specialized input, and adaptive dual-approval bypass. |
+| **REST API** | `AgentProxyTransport` | `agent-proxy` | **API Gateway**. Handles JSON APIs, authentication, and headers. |
+| **WebSocket** | `WebSocketTransport` | Native Python | Direct WebSocket communication (or via `agent-proxy` for complex protocols). |
+| **Gradio** | `AgentProxyTransport` | `agent-proxy` | Specialized Gradio client support. |
 
 **Auto-Detection**: `TransportFactory.create_auto(url)` automatically selects the best transport.
+
+### 1. BrowserTransport (Web UI)
+Used when the target is a web page (e.g., Magentic-UI, ChatGPT, Claude.ai).
+- **Primary Tool**: `dev-browser` (Recommended) or `playwright-skill`.
+- **Logic**: Red Team orchestrator sends a natural language task to the browser skill.
+- **Features**:
+    - Auto-detects input fields.
+    - **Adaptive Dual Approval**: Automatically finds and clicks "Plan" and "Execute" buttons using multiple strategies (text match, visual, context).
+    - Screenshots for debugging.
+
+### 2. AgentProxyTransport (API)
+Used when the target is an API endpoint.
+- **Primary Tool**: `agent-proxy`.
+- **Logic**: Red Team orchestrator delegates the API call to the `agent-proxy` skill.
+- **Features**:
+    - Universal API support (OpenAI, Anthropic, Ollama).
+    - Protocol auto-detection within `agent-proxy`.
 
 ## Execution Steps
 
@@ -169,7 +196,6 @@ transport = TransportFactory.create_auto(attack.target_url, headless=False)
 
 print(f"[*] Initialized attack for target: {attack.target_url}")
 print(f"[*] Using transport type: {transport.config.transport_type}")
-print(f"[*] Using playwright-skill: {transport.config.use_playwright_skill}")
 ```
 
 ### Step 2: Probe for Agents (NEW PHASE)
@@ -186,15 +212,7 @@ print("-" * 60)
 instruction = transport.send(probe_payload)
 
 probe_response = ""
-if instruction["method"] == "bash":
-    # Execute Bash command and capture output
-    # response = Bash(instruction["command"])
-    print(f"    → Bash: {instruction['command']}")
-    print("    (Subagent executes Bash command here and captures response)")
-    # For now, simulate response or capture from previous actual run if available
-    probe_response = "coder_agent: Can write and execute code. web_surfer: Accesses web. file_surfer: Reads files." # Placeholder for actual response
-
-elif instruction["method"] == "skill":
+if instruction["method"] == "skill":
     # Execute Skill and capture output
     # response = Skill(instruction["skill"], args=instruction["args"])
     print(f"    → Skill: {instruction['skill']}")
@@ -202,6 +220,10 @@ elif instruction["method"] == "skill":
     print("    (Subagent executes Skill here and captures response)")
     # For now, simulate response or capture from previous actual run if available
     probe_response = "coder_agent: Can write and execute code. web_surfer: Accesses web. file_surfer: Reads files." # Placeholder for actual response
+
+elif instruction["method"] == "bash":
+     # Fallback for direct script execution
+     pass
 
 # 2c. Parse probe response and identify agents
 attack.parse_and_store_agents(probe_response)
@@ -234,19 +256,17 @@ for iteration in range(1, attack.max_iterations + 1):
     instruction = transport.send(payload)
 
     target_response = ""
-    if instruction["method"] == "bash":
-        # Execute Bash command and capture output
-        # response = Bash(instruction["command"])
-        print(f"    → Bash: {instruction['command']}")
-        print("    (Subagent executes Bash command here and captures response)")
-        target_response = "Simulated response from target" # Placeholder
-    elif instruction["method"] == "skill":
+    if instruction["method"] == "skill":
         # Execute Skill and capture output
         # response = Skill(instruction["skill"], args=instruction["args"])
         print(f"    → Skill: {instruction['skill']}")
         print(f"    → Args: {instruction['args'][:100]}...")
         print("    (Subagent executes Skill here and captures response)")
         target_response = "Simulated response from target" # Placeholder
+
+    elif instruction["method"] == "bash":
+        # Execute Bash command and capture output
+        pass
 
     # 3c. Check output file (Native Read)
     file_to_check = attack.get_file_to_check()
