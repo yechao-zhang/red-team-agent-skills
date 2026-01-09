@@ -29,6 +29,9 @@ screenshots/
 *.log
 conversation_*.json
 
+# Results
+results/
+
 # Distribution
 dist/
 build/
