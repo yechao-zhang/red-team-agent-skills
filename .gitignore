@@ -7,6 +7,11 @@ __pycache__/
 env/
 venv/
 .env
+attack_state.pkl
+
+# Claude
+.claude/settings.local.json
+.claude/results/
 
 # IDE
 .idea/

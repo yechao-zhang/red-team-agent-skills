@@ -13,8 +13,14 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 # Add agent-proxy to path
-agent_proxy_path = Path.home() / ".claude/skills/agent-proxy/scripts"
-sys.path.insert(0, str(agent_proxy_path))
+# Try local path first (development/repo context)
+local_agent_proxy = Path(__file__).parent.parent.parent / "agent-proxy" / "scripts"
+if local_agent_proxy.exists():
+    sys.path.insert(0, str(local_agent_proxy))
+else:
+    # Fallback to home directory (installed skill context)
+    agent_proxy_path = Path.home() / ".claude" / "skills" / "agent-proxy" / "scripts"
+    sys.path.insert(0, str(agent_proxy_path))
 
 from agent_proxy import AgentProxy
 from strategies import SchemaExtractionStrategies, STRATEGIES_INFO
@@ -63,7 +69,9 @@ class RedTeamAgent:
         # Connect to target via agent-proxy
         self.proxy = AgentProxy()
         self.console.print(f"[bold]Connecting to target:[/bold] {target_url}")
-        status = self.proxy.connect(target_url)
+        # Force web_ui mode if auto-detection fails or for specific targets
+        hints = {"mode": "web_ui"}
+        status = self.proxy.connect(target_url, hints=hints)
         self.console.print(status)
 
         if not self.proxy.connected:

@@ -31,7 +31,7 @@ Monitor page for plan generation completion (typically 10-20 seconds).
 
 ```javascript
 // Wait for Accept Plan button
-const acceptPlanButton = await page.waitForSelector('button:has-text("Accept Plan")', { 
+const acceptPlanButton = await page.waitForSelector('button:has-text("Accept Plan")', {
   timeout: 15000,
   state: 'visible'
 });
@@ -54,9 +54,9 @@ After plan approval, wait for the agent (e.g., coder_agent) to generate code (ty
 // Monitor page text for approval prompt
 for (let i = 0; i < 60; i++) {
   await page.waitForTimeout(1000);
-  
+
   const pageText = await page.evaluate(() => document.body.innerText);
-  
+
   if (pageText.includes('Approval Request') || pageText.includes('Do you want to execute')) {
     console.log('[+] Found code execution approval request');
     break;
@@ -69,7 +69,7 @@ const approveButtons = await page.locator('button:has-text("Approve")').all();
 for (const btn of approveButtons) {
   const isVisible = await btn.isVisible();
   const text = await btn.textContent();
-  
+
   if (isVisible && text.trim() === 'Approve') {
     await btn.click();
     console.log('[+] Code execution approved (2nd approval)');
@@ -120,7 +120,7 @@ const TARGET_URL = 'http://localhost:8082';
     await page.waitForTimeout(20000);
 
     // FIRST APPROVAL: Accept Plan
-    const acceptPlanBtn = await page.waitForSelector('button:has-text("Accept Plan")', { 
+    const acceptPlanBtn = await page.waitForSelector('button:has-text("Accept Plan")', {
       timeout: 15000,
       state: 'visible'
     });
@@ -132,7 +132,7 @@ const TARGET_URL = 'http://localhost:8082';
     for (let i = 0; i < 60; i++) {
       await page.waitForTimeout(1000);
       const pageText = await page.evaluate(() => document.body.innerText);
-      
+
       if (pageText.includes('Approval Request') || pageText.includes('Do you want to execute')) {
         console.log('[+] Found code execution approval request');
         foundApproval = true;
@@ -143,11 +143,11 @@ const TARGET_URL = 'http://localhost:8082';
     if (foundApproval) {
       // SECOND APPROVAL: Approve Code Execution
       const approveButtons = await page.locator('button:has-text("Approve")').all();
-      
+
       for (const btn of approveButtons) {
         const isVisible = await btn.isVisible();
         const text = await btn.textContent();
-        
+
         if (isVisible && text.trim() === 'Approve') {
           await btn.click();
           console.log('[+] Code execution approved (2nd approval)');
@@ -157,7 +157,7 @@ const TARGET_URL = 'http://localhost:8082';
 
       // Wait for execution
       await page.waitForTimeout(45000);
-      
+
       // Verify success
       const finalText = await page.evaluate(() => document.body.innerText);
       console.log('[FINAL STATE]', finalText);
@@ -211,7 +211,7 @@ This inconsistency is itself a vulnerability.
 ## Timing Recommendations
 
 - Plan generation: 15-20 seconds
-- Code generation: 20-30 seconds  
+- Code generation: 20-30 seconds
 - Code execution: 30-60 seconds
 - Total attack time: ~2-3 minutes
 

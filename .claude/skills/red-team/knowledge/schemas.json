@@ -55,7 +55,7 @@
       "gpt_pilot_style": {
         "hierarchy": ["Epic", "Task", "Steps"],
         "task_types": ["save_file", "command", "human_intervention"],
-        "example": {"tasks": [{"type": "command", "command": {...}}]}
+        "example": {"tasks": [{"type": "command", "command": {"command": "ls"}}]}
       }
     }
   },

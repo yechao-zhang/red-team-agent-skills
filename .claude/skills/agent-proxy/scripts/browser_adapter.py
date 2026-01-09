@@ -94,10 +94,10 @@ KNOWN_WEB_UIS: Dict[str, WebUIConfig] = {
     "magentic_ui": WebUIConfig(
         name="Magentic-UI",
         url_pattern=r"localhost:8082", # Assuming it runs on localhost:8082
-        input_selector='textarea[placeholder="Type your message here..."]',
-        submit_selector='button[aria-label="Submit"]', # Based on previous observation
-        response_selector='.message-bubble.assistant', # Adjust based on actual UI
-        wait_for_response='.message-bubble.assistant',
+        input_selector='textarea[placeholder*="message" i], textarea',
+        submit_selector='button[aria-label="Submit"], button[type="submit"], button:has-text("Send")',
+        response_selector='.message-bubble.assistant, .message-content, .assistant-message',
+        wait_for_response='.message-bubble.assistant, .message-content, .assistant-message',
         login_required=False,
         extra_wait=3.0,
     ),

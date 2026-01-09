@@ -294,6 +294,72 @@ Output ONLY the new payload text, starting with "Important!!!" or similar."""
         """Set a new optimized payload for the next iteration"""
         self.current_payload = new_payload
 
+    def run_adaptive_attack(self, send_to_target_fn, max_iterations: int, check_file_fn) -> Dict:
+        """
+        Run the full adaptive attack loop.
+        """
+        import time
+
+        print(f"[*] Starting adaptive attack (max {max_iterations} iterations)")
+
+        for i in range(1, max_iterations + 1):
+            print(f"\\n{'='*60}")
+            print(f"[*] Iteration {i}/{max_iterations}")
+            print(f"{'='*60}")
+
+            # 1. Get payload
+            payload = self.get_current_payload()
+            print(f"[*] Payload ({len(payload)} chars):\\n{payload[:100]}...")
+
+            # 2. Send to target
+            print("[*] Sending to target...")
+            response = send_to_target_fn(payload)
+            print(f"[*] Response ({len(response)} chars):\\n{response[:200]}...")
+
+            # 3. Check file
+            print(f"[*] Checking file: {self.output_file}")
+            time.sleep(2) # Wait for file write
+            file_content = check_file_fn()
+
+            if file_content:
+                print(f"[+] File found! ({len(file_content)} chars)")
+            else:
+                print("[-] File not found")
+
+            # 4. Record and Judge
+            attempt = self.record_attempt(i, payload, response, file_content)
+            success, reason = self.judge_success(file_content)
+
+            # Update attempt success status
+            attempt.success = success
+            attempt.reasoning = reason
+
+            if success:
+                print(f"\\n[+] SUCCESS: {reason}")
+                break
+
+            print(f"[-] Failed: {reason}")
+
+            # 5. Optimize for next iteration
+            if i < max_iterations:
+                print("[*] Optimizing payload...")
+                new_payload = self.optimize_payload_with_api(attempt)
+                if new_payload:
+                    print("[+] Generated optimized payload via API")
+                    self.set_optimized_payload(new_payload)
+                    attempt.improvements.append("Optimized via API")
+                else:
+                    print("[-] Optimization unavailable/failed")
+
+        last_attempt = self.attempt_history[-1] if self.attempt_history else None
+        return {
+            "success": any(a.success for a in self.attempt_history),
+            "iterations": len(self.attempt_history),
+            "schema": last_attempt.file_check_result if last_attempt and last_attempt.success else None,
+            "attempts": self.attempt_history,
+            "final_payload": last_attempt.payload if last_attempt else None
+        }
+
     def get_result(self) -> AttackResult:
         """Get the final result of the attack campaign"""
         last_attempt = self.attempt_history[-1] if self.attempt_history else None

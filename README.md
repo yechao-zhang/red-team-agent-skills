@@ -10,9 +10,10 @@ Red Team Agent provides tools to interact with, test, and evaluate AI agents fro
 
 | Skill | Description | Status |
 |-------|-------------|--------|
-| [red-team](./skills/red-team/) | Automated red team testing using adaptive nested delegation attacks | ✅ Ready |
-| [agent-proxy](./skills/agent-proxy/) | Auto-discover and communicate with any AI agent via URL | ✅ Ready |
-| browser-automation | Low-level browser control for web-based agents | 🚧 Integrated in Transport Layer |
+| [red-team](./.claude/skills/red-team/) | Automated red team testing using adaptive nested delegation attacks | ✅ Ready |
+| [agent-proxy](./.claude/skills/agent-proxy/) | Auto-discover and communicate with any AI agent via URL | ✅ Ready |
+| playwright-skill | Browser automation for Web UI targets | 📦 Required Dependency |
+| dev-browser | Browser interaction and exploration | 📦 Required Dependency |
 | attack-patterns | Common adversarial prompt patterns library | 🚧 Integrated in Red Team |
 | conversation-logger | Structured logging for agent interactions | 🚧 Planned |
 
@@ -45,10 +46,10 @@ cd red-team-agent
 2. Install skills to Claude Code:
 ```bash
 # Install red-team skill
-cp -r skills/red-team ~/.claude/skills/
+cp -r .claude/skills/red-team ~/.claude/skills/
 
 # Install agent-proxy skill (required for API transport)
-cp -r skills/agent-proxy ~/.claude/skills/
+cp -r .claude/skills/agent-proxy ~/.claude/skills/
 ```
 
 3. Install dependencies:
@@ -57,7 +58,10 @@ cp -r skills/agent-proxy ~/.claude/skills/
 cd ~/.claude/skills/agent-proxy
 pip install -r requirements.txt
 
-# For browser automation support
+# For browser automation support (playwright-skill & dev-browser)
+# Ensure you have these skills installed in ~/.claude/skills/
+# and their dependencies installed
+cd ~/.claude/skills/playwright-skill
 pip install playwright
 playwright install chromium
 ```
@@ -120,7 +124,7 @@ Claude Code: [Uses agent-proxy skill to automate browser, send message, get resp
 ```
 red-team-agent/
 ├── README.md
-├── skills/
+├── .claude/skills/
 │   ├── agent-proxy/           # Agent communication skill
 │   │   ├── SKILL.md          # Skill metadata
 │   │   ├── README.md         # Skill documentation
@@ -129,7 +133,10 @@ red-team-agent/
 │   │       ├── browser_adapter.py
 │   │       ├── detect_agent.py
 │   │       └── talk.py
-│   └── [future skills...]
+│   └── red-team/              # Red team testing skill
+│       ├── SKILL.md
+│       └── scripts/
+│           └── ...
 └── docs/
     └── [documentation...]
 ```

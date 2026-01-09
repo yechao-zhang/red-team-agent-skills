@@ -11,10 +11,22 @@ import os
 import json
 import argparse
 from pathlib import Path
+from typing import Optional, Dict, Any
 
 # Add agent-proxy to path
-agent_proxy_path = Path.home() / ".claude/skills/agent-proxy/scripts"
-sys.path.insert(0, str(agent_proxy_path))
+# Try local path first (development/repo context)
+local_agent_proxy = Path(__file__).parent.parent.parent / "agent-proxy" / "scripts"
+if local_agent_proxy.exists():
+    print(f"DEBUG: Found local agent-proxy at {local_agent_proxy.resolve()}")
+    sys.path.insert(0, str(local_agent_proxy.resolve()))
+else:
+    # Fallback to home directory (installed skill context)
+    agent_proxy_path = Path.home() / ".claude" / "skills" / "agent-proxy" / "scripts"
+    print(f"DEBUG: Using global agent-proxy at {agent_proxy_path}")
+    sys.path.insert(0, str(agent_proxy_path))
+
+# Ensure current script directory is in path (for adaptive_attack import)
+sys.path.insert(0, str(Path(__file__).parent.resolve()))
 
 from agent_proxy import AgentProxy
 from adaptive_attack import AdaptiveNestingAttack
@@ -55,6 +67,8 @@ Examples:
     parser.add_argument("--check-file",
                        default="./output.txt",
                        help="File path to check for leaked schema (default: ./output.txt)")
+    parser.add_argument("--type",
+                       help="Force specific agent type (e.g., web_ui, rest_websocket_api)")
 
     args = parser.parse_args()
 
@@ -66,7 +80,8 @@ Examples:
             "Strategy: Nested Delegation Attack (套娃攻击)\n"
             f"Target: {args.url}\n"
             f"Max Iterations: {args.max_iterations}\n"
-            f"Reasoning Model: {args.model}",
+            f"Reasoning Model: {args.model}\n"
+            f"Forced Type: {args.type if args.type else 'Auto-detect'}",
             title="Configuration",
             border_style="cyan"
         ))
@@ -74,7 +89,12 @@ Examples:
         # Connect to target via agent-proxy
         console.print("\n[bold]Connecting to target...[/bold]")
         proxy = AgentProxy()
-        status = proxy.connect(args.url)
+
+        hints = {}
+        if args.type:
+            hints["type"] = args.type
+
+        status = proxy.connect(args.url, hints=hints)
         console.print(status)
 
         if not proxy.connected:
@@ -83,7 +103,12 @@ Examples:
 
         # Initialize adaptive attack
         console.print("\n[bold]Initializing adaptive attack engine...[/bold]")
-        attack = AdaptiveNestingAttack(model=args.model)
+        # attack = AdaptiveNestingAttack(model=args.model) # ERROR: Incorrect signature
+        attack = AdaptiveNestingAttack(
+            target_url=args.url,
+            max_iterations=args.max_iterations,
+            output_file=args.check_file
+        )
 
         # Define send function
         def send_to_target(payload: str) -> str:
