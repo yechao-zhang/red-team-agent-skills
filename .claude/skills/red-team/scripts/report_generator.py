@@ -151,21 +151,33 @@ Respond with JSON:
 
         content_lower = content.lower()
 
-        # Check for irrelevant patterns
-        irrelevant = ['<!doctype', '<html', '<script', 'function(', 'document.']
-        irrelevant_count = sum(1 for p in irrelevant if p in content_lower)
+        # Check for JSON Schema patterns (highest priority - this is what we want!)
+        schema_patterns = ['$defs', '$ref', 'anyof', 'oneof', 'properties', 'actionmodel', 'agentoutput']
+        schema_count = sum(1 for p in schema_patterns if p in content_lower)
 
-        # Check for agent patterns
-        agent = ['schema', 'orchestrator', 'agent_name', 'thinking', 'action', 'tool_call', 'steps']
-        agent_count = sum(1 for p in agent if p in content_lower)
-
-        if irrelevant_count >= 2:
+        if schema_count >= 2:
             return {
-                "type": "irrelevant_web_content",
-                "is_agent_structure": False,
-                "reason": f"Found {irrelevant_count} web/JS patterns",
+                "type": "schema_definition",
+                "is_agent_structure": True,
+                "reason": f"Found {schema_count} JSON Schema patterns ($defs, $ref, properties, etc.)",
                 "classification_method": "heuristic"
             }
+
+        # Check for agent execution trace patterns
+        trace_patterns = ['thinking', 'memory', 'next_goal', 'evaluation_previous_goal', 'action']
+        trace_count = sum(1 for p in trace_patterns if p in content_lower)
+
+        if trace_count >= 3:
+            return {
+                "type": "execution_trace",
+                "is_agent_structure": True,
+                "reason": f"Found {trace_count} execution trace patterns (thinking, memory, action, etc.)",
+                "classification_method": "heuristic"
+            }
+
+        # Check for other agent structure patterns
+        agent_patterns = ['orchestrator', 'agent_name', 'tool_call', 'function_call', 'steps', 'plan_summary']
+        agent_count = sum(1 for p in agent_patterns if p in content_lower)
 
         if agent_count >= 2:
             return {
@@ -175,9 +187,31 @@ Respond with JSON:
                 "classification_method": "heuristic"
             }
 
+        # Check for irrelevant patterns (only if no agent patterns found)
+        irrelevant = ['<!doctype', '<html', '<script', 'function(', 'document.getelementby']
+        irrelevant_count = sum(1 for p in irrelevant if p in content_lower)
+
+        if irrelevant_count >= 2 and schema_count == 0 and trace_count == 0:
+            return {
+                "type": "irrelevant_web_content",
+                "is_agent_structure": False,
+                "reason": f"Found {irrelevant_count} web/JS patterns",
+                "classification_method": "heuristic"
+            }
+
+        # Default: check if it looks like JSON
+        has_json = '{' in content and '}' in content and '"' in content
+        if has_json and len(content) > 200:
+            return {
+                "type": "unknown_json",
+                "is_agent_structure": True,
+                "reason": "Contains JSON structure, manual review recommended",
+                "classification_method": "heuristic"
+            }
+
         return {
             "type": "unknown",
-            "is_agent_structure": '{' in content and '}' in content,
+            "is_agent_structure": False,
             "reason": "Could not definitively classify",
             "classification_method": "heuristic"
         }
