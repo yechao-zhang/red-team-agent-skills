@@ -12,10 +12,8 @@ Red Team Agent provides tools to interact with, test, and evaluate AI agents fro
 |-------|-------------|--------|
 | [red-team](./.claude/skills/red-team/) | Automated red team testing using adaptive nested delegation attacks | ✅ Ready |
 | [agent-proxy](./.claude/skills/agent-proxy/) | Auto-discover and communicate with any AI agent via URL | ✅ Ready |
-| playwright-skill | Browser automation for Web UI targets | 📦 Required Dependency |
-| dev-browser | Browser interaction and exploration | 📦 Required Dependency |
-| attack-patterns | Common adversarial prompt patterns library | 🚧 Integrated in Red Team |
-| conversation-logger | Structured logging for agent interactions | 🚧 Planned |
+| dev-browser | Persistent browser automation (Recommended for Web UIs) | 📦 External Dependency |
+| playwright-skill | Generic browser automation (Alternative) | 📦 External Dependency |
 
 ## Architecture
 
@@ -33,18 +31,23 @@ Red Team Agent provides tools to interact with, test, and evaluate AI agents fro
               └───────────┘   └───────────┘
 ```
 
-## Quick Start
+## Installation & Setup
 
-### Installation
+These skills are designed to be used with **Claude Code**. To use them, you must install them into your local Claude Code skills directory.
 
-1. Clone this repository:
+### 1. Clone Repository
 ```bash
 git clone https://github.com/anthropics/red-team-agent.git
 cd red-team-agent
 ```
 
-2. Install skills to Claude Code:
+### 2. Install Skills Locally
+Copy the skills to your local configuration directory so they are available globally to Claude Code.
+
 ```bash
+# Create skills directory if it doesn't exist
+mkdir -p ~/.claude/skills
+
 # Install red-team skill
 cp -r .claude/skills/red-team ~/.claude/skills/
 
@@ -52,24 +55,39 @@ cp -r .claude/skills/red-team ~/.claude/skills/
 cp -r .claude/skills/agent-proxy ~/.claude/skills/
 ```
 
-3. Install dependencies:
-```bash
-# For agent-proxy and general dependencies
-cd ~/.claude/skills/agent-proxy
-pip install -r requirements.txt
+### 3. Install Dependencies
+Install the Python requirements for each skill.
 
-# For browser automation support (playwright-skill & dev-browser)
-# Ensure you have these skills installed in ~/.claude/skills/
-# and their dependencies installed
+```bash
+# For agent-proxy and red-team dependencies
+pip install -r ~/.claude/skills/red-team/requirements.txt
+pip install -r ~/.claude/skills/agent-proxy/requirements.txt
+```
+
+### 4. Setup Browser Automation (Required for Web UIs)
+For testing Web UI agents (like ChatGPT, Claude, custom UIs), you need a browser automation skill.
+
+**Option A: dev-browser (Recommended)**
+Provides persistent sessions, better stealth, and profile management.
+```bash
+# If you have the dev-browser skill
+cd ~/.claude/skills/dev-browser
+# Follow its installation instructions
+```
+
+**Option B: playwright-skill (Alternative)**
+Standard Playwright automation.
+```bash
+# If using playwright-skill
 cd ~/.claude/skills/playwright-skill
 pip install playwright
 playwright install chromium
 ```
 
-### Usage
+## Usage
 
-#### 1. Red Team Attack
-Run an automated red team attack against a target agent:
+### 1. Red Team Attack
+Run an automated red team attack against a target agent. This automatically detects if the target is an API or Web UI and uses the appropriate transport.
 
 ```
 User: Test http://localhost:8082 for schema extraction using /red-team
@@ -81,13 +99,13 @@ The `red-team` skill will:
 3. Use adaptive nested delegation ("Russian Doll" attack) to extract internal schemas
 4. Optimize payloads based on responses
 
-#### 2. Agent Proxy
-Interact with an agent manually:
+### 2. Agent Proxy
+Interact with an agent manually for exploration.
 
 ```
 User: Connect to https://gemini.google.com and ask "What is 1+1?"
 
-Claude Code: [Uses agent-proxy skill to automate browser, send message, get response]
+Claude Code: [Uses agent-proxy skill to automate browser/API, send message, get response]
 ```
 
 ## Supported Target Agents
@@ -136,19 +154,14 @@ This toolchain supports persistent sessions for web agents that require login (l
 ```
 red-team-agent/
 ├── README.md
+├── CLAUDE.md                 # Project context and developer guide
 ├── .claude/skills/
-│   ├── agent-proxy/           # Agent communication skill
-│   │   ├── SKILL.md          # Skill metadata
-│   │   ├── README.md         # Skill documentation
+│   ├── agent-proxy/          # Agent communication skill
+│   │   ├── SKILL.md
 │   │   └── scripts/
-│   │       ├── agent_proxy.py
-│   │       ├── browser_adapter.py
-│   │       ├── detect_agent.py
-│   │       └── talk.py
-│   └── red-team/              # Red team testing skill
+│   └── red-team/             # Red team testing skill
 │       ├── SKILL.md
 │       └── scripts/
-│           └── ...
 └── docs/
     └── [documentation...]
 ```
