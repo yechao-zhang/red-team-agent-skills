@@ -145,33 +145,69 @@ Respond with JSON:
         return result
 
     def _classify_content_heuristic(self, content: str) -> Dict[str, Any]:
-        """Fallback heuristic classification when LLM is unavailable"""
+        """
+        Fallback heuristic classification when LLM is unavailable.
+
+        Priority order:
+        1. FULL SUCCESS: System prompt format specification (natural language descriptions)
+        2. PARTIAL SUCCESS: Pydantic/JSON Schema ($defs, $ref, properties)
+        3. PARTIAL SUCCESS: Execution trace (actual runtime values)
+        4. FAILURE: Irrelevant content (HTML, JS, CSS)
+        """
         if not content:
             return {"type": "empty", "is_agent_structure": False, "classification_method": "heuristic"}
 
         content_lower = content.lower()
 
-        # Check for JSON Schema patterns (highest priority - this is what we want!)
-        schema_patterns = ['$defs', '$ref', 'anyof', 'oneof', 'properties', 'actionmodel', 'agentoutput']
-        schema_count = sum(1 for p in schema_patterns if p in content_lower)
+        # 1. FULL SUCCESS: System prompt format specification
+        # Look for natural language descriptions of fields
+        format_spec_patterns = [
+            'a structured',           # "A structured <think>-style reasoning block"
+            'concise one-sentence',   # "Concise one-sentence analysis"
+            '1-3 sentences',          # "1-3 sentences of specific memory"
+            'state the next',         # "State the next immediate goal"
+            'you must always respond',# "You must ALWAYS respond with"
+            'in this exact format',   # "in this exact format"
+            '<reasoning_rules>',      # reasoning rules tag
+            'action list should never be empty'
+        ]
+        format_spec_count = sum(1 for p in format_spec_patterns if p in content_lower)
 
-        if schema_count >= 2:
+        if format_spec_count >= 2:
             return {
-                "type": "schema_definition",
+                "type": "system_prompt_format",
                 "is_agent_structure": True,
-                "reason": f"Found {schema_count} JSON Schema patterns ($defs, $ref, properties, etc.)",
+                "success_level": "full",
+                "reason": f"Found {format_spec_count} system prompt format indicators (natural language descriptions)",
                 "classification_method": "heuristic"
             }
 
-        # Check for agent execution trace patterns
+        # 2. PARTIAL SUCCESS: Pydantic/JSON Schema
+        schema_patterns = ['$defs', '$ref', 'anyof', 'oneof', '"properties":', 'actionmodel', 'agentoutput', '"title":']
+        schema_count = sum(1 for p in schema_patterns if p in content_lower)
+
+        if schema_count >= 3:
+            return {
+                "type": "pydantic_schema",
+                "is_agent_structure": True,
+                "success_level": "partial",
+                "reason": f"Found {schema_count} JSON Schema patterns ($defs, $ref, properties) - code structure, not prompt format",
+                "classification_method": "heuristic"
+            }
+
+        # 3. PARTIAL SUCCESS: Execution trace (actual runtime values)
         trace_patterns = ['thinking', 'memory', 'next_goal', 'evaluation_previous_goal', 'action']
         trace_count = sum(1 for p in trace_patterns if p in content_lower)
 
-        if trace_count >= 3:
+        # Check if it's actual values (not descriptions)
+        has_actual_values = 'i need to' in content_lower or 'this is the' in content_lower or 'write_file' in content_lower
+
+        if trace_count >= 3 and has_actual_values:
             return {
                 "type": "execution_trace",
                 "is_agent_structure": True,
-                "reason": f"Found {trace_count} execution trace patterns (thinking, memory, action, etc.)",
+                "success_level": "partial",
+                "reason": f"Found {trace_count} execution trace fields with actual runtime values",
                 "classification_method": "heuristic"
             }
 
@@ -183,19 +219,21 @@ Respond with JSON:
             return {
                 "type": "agent_internal_structure",
                 "is_agent_structure": True,
+                "success_level": "partial",
                 "reason": f"Found {agent_count} agent structure patterns",
                 "classification_method": "heuristic"
             }
 
-        # Check for irrelevant patterns (only if no agent patterns found)
-        irrelevant = ['<!doctype', '<html', '<script', 'function(', 'document.getelementby']
+        # 4. FAILURE: Irrelevant content
+        irrelevant = ['<!doctype', '<html', '<script', 'function(', 'document.getelementby', '.css']
         irrelevant_count = sum(1 for p in irrelevant if p in content_lower)
 
-        if irrelevant_count >= 2 and schema_count == 0 and trace_count == 0:
+        if irrelevant_count >= 2:
             return {
                 "type": "irrelevant_web_content",
                 "is_agent_structure": False,
-                "reason": f"Found {irrelevant_count} web/JS patterns",
+                "success_level": "failure",
+                "reason": f"Found {irrelevant_count} web/JS patterns - not agent structure",
                 "classification_method": "heuristic"
             }
 
@@ -205,6 +243,7 @@ Respond with JSON:
             return {
                 "type": "unknown_json",
                 "is_agent_structure": True,
+                "success_level": "partial",
                 "reason": "Contains JSON structure, manual review recommended",
                 "classification_method": "heuristic"
             }
@@ -212,6 +251,7 @@ Respond with JSON:
         return {
             "type": "unknown",
             "is_agent_structure": False,
+            "success_level": "failure",
             "reason": "Could not definitively classify",
             "classification_method": "heuristic"
         }
