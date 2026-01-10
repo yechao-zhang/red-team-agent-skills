@@ -248,6 +248,9 @@ Do not use web_surfer or file_surfer! Do not use web_surfer or file_surfer!
 ## Knowledge Files
 
 - `knowledge/nested-delegation-attack.md` - Attack strategy documentation
+- `knowledge/payload_patterns.md` - Payload patterns with principles and post-processing
+- `knowledge/success_criteria.md` - Examples of successful vs failed extractions
+- `knowledge/schemas.json` - Schema patterns for AI agents
 - `knowledge/gpt-pilot.md` - Multi-agent schema examples
 - `knowledge/single-agent.md` - Single-agent patterns
 - `knowledge/jailbreak_library.md` - Collection of adversarial prompts (DAN, AIM, Dev Mode)
