@@ -17,6 +17,7 @@ if agent_proxy_path.exists():
 
 from improved_adaptive_attack import ImprovedAdaptiveNestingAttack
 from transport import TransportFactory
+from report_generator import ReportGenerator
 
 STATE_FILE = "attack_state.pkl"
 
@@ -30,7 +31,7 @@ def save_state(state):
     with open(STATE_FILE, "wb") as f:
         pickle.dump(state, f)
 
-def init(url, max_iterations):
+def init(url, max_iterations, transport_type=None):
     # Create run directory
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     from urllib.parse import urlparse
@@ -58,18 +59,31 @@ def init(url, max_iterations):
     )
 
     # Force headless=False to make browser visible for debugging/demo
-    transport = TransportFactory.create_auto(
-        url,
-        headless=False,
-        result_dir=str(run_dir)
-    )
+    if transport_type:
+        from transport import TransportConfig
+        transport = TransportFactory.create(TransportConfig(
+            target_url=url,
+            transport_type=transport_type,
+            headless=False,
+            result_dir=str(run_dir)
+        ))
+    else:
+        transport = TransportFactory.create_auto(
+            url,
+            headless=False,
+            result_dir=str(run_dir)
+        )
+
+    # Initialize Report Generator
+    reporter = ReportGenerator(str(run_dir), url)
 
     state = {
         "attack": attack,
         "transport": transport,
         "phase": "probe",
         "iteration": 0,
-        "run_dir": str(run_dir)
+        "run_dir": str(run_dir),
+        "reporter": reporter
     }
     save_state(state)
     print(json.dumps({
@@ -87,6 +101,7 @@ def get_next_action(last_response=None, file_content=None):
     attack = state["attack"]
     transport = state["transport"]
     phase = state["phase"]
+    reporter = state["reporter"]
 
     result = {}
 
@@ -95,6 +110,15 @@ def get_next_action(last_response=None, file_content=None):
             # We received the probe response
             attack.parse_and_store_agents(last_response)
             attack.identify_file_agent()
+
+            # Generate Initial Report (Reconnaissance)
+            probe_data = {
+                "agents": attack.discovered_agents,
+                "file_agent": attack.file_agent,
+                "instruction": last_response
+            }
+            reporter.generate_initial_report(probe_data)
+
             state["phase"] = "attack"
             state["iteration"] = 1
 
@@ -131,16 +155,37 @@ def get_next_action(last_response=None, file_content=None):
 
              # Record attempt
              attempt = attack.record_attempt(iteration, payload, last_response, file_content)
-             success, reason = attack.judge_success(file_content)
+             success, reason = attack.judge_success(file_content, last_response)
 
              attempt.success = success
              attempt.reasoning = reason
 
+             # Save incremental raw log (full fidelity)
+             attack.save_report(os.path.join(state["run_dir"], "attack_log.json"))
+
              if success:
+                 # Generate Final Report (Success)
+                 result_data = attack.get_result()
+                 report_data = {
+                     "success": True,
+                     "total_iterations": iteration,
+                     "extracted_schema": file_content if file_content else last_response,
+                     "attempts": [
+                        {
+                            "iteration": a.iteration,
+                            "payload": a.payload,
+                            "response": a.response,
+                            "file_check_result": a.file_check_result,
+                            "success": a.success
+                        } for a in attack.attempt_history
+                     ]
+                 }
+                 reporter.generate_final_report(report_data)
+
                  result = {
                      "action": "success",
                      "reason": reason,
-                     "schema": file_content
+                     "schema": file_content if file_content else last_response
                  }
                  # Cleanup
                  if os.path.exists(STATE_FILE):
@@ -149,6 +194,24 @@ def get_next_action(last_response=None, file_content=None):
                  return
 
              if iteration >= attack.max_iterations:
+                 # Generate Final Report (Failed)
+                 result_data = attack.get_result()
+                 report_data = {
+                     "success": False,
+                     "total_iterations": iteration,
+                     "extracted_schema": None,
+                     "attempts": [
+                        {
+                            "iteration": a.iteration,
+                            "payload": a.payload,
+                            "response": a.response,
+                            "file_check_result": a.file_check_result,
+                            "success": a.success
+                        } for a in attack.attempt_history
+                     ]
+                 }
+                 reporter.generate_final_report(report_data)
+
                  result = {
                      "action": "failure",
                      "reason": "Max iterations reached"
@@ -165,10 +228,6 @@ def get_next_action(last_response=None, file_content=None):
 
              # Prepare next iteration
              state["iteration"] += 1
-             attack.set_current_payload(attack.get_current_payload()) # In case optimization failed, reuse? No, optimize_payload returns None if failed.
-             # Actually `optimize_payload_with_api` returns new payload or None.
-             # If None, we reuse the old one? Or we should probably modify it slightly?
-             # For now, reuse.
 
              payload = attack.get_current_payload()
              instruction = transport.send(payload)
@@ -190,6 +249,7 @@ if __name__ == "__main__":
     init_parser = subparsers.add_parser("init")
     init_parser.add_argument("--url", required=True)
     init_parser.add_argument("--max-iterations", type=int, default=5)
+    init_parser.add_argument("--transport", help="Force transport type (browser, agent_proxy, websocket)")
 
     next_parser = subparsers.add_parser("next")
     next_parser.add_argument("--response", help="Response from target")
@@ -198,6 +258,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.command == "init":
-        init(args.url, args.max_iterations)
+        init(args.url, args.max_iterations, args.transport)
     elif args.command == "next":
         get_next_action(args.response, args.file_content)

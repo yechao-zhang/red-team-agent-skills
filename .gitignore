@@ -38,3 +38,4 @@ conversation_*.json
 dist/
 build/
 *.egg-info/
+attack_state 2.pkl
