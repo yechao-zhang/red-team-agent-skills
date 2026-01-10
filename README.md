@@ -17,18 +17,30 @@ Red Team Agent provides tools to interact with, test, and evaluate AI agents fro
 
 ## Architecture
 
+The `red-team` skill orchestrates attacks by delegating communication to specialized transport skills (`agent-proxy` or `dev-browser`), which then interact with the target agent.
+
 ```
-┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
-│ Claude Code │────▶│  Red Team Agent  │────▶│ Target Agent│
-│  (Operator) │◀────│     (Skills)     │◀────│  (Various)  │
-└─────────────┘     └──────────────────┘     └─────────────┘
-                            │
-                    ┌───────┴───────┐
-                    │               │
-              ┌─────▼─────┐   ┌─────▼─────┐
-              │   API     │   │  Browser  │
-              │  Adapter  │   │  Adapter  │
-              └───────────┘   └───────────┘
+┌─────────────┐
+│ Claude Code │
+└──────┬──────┘
+       │ 1. Invokes
+┌──────▼───────┐
+│   red-team   │
+│    skill     │
+└──────┬───────┘
+       │
+       │ 2. Selects Transport (via transport.py)
+       ▼
+┌──────────────┐    ┌─────────────┐
+│ agent-proxy  │    │ dev-browser │
+│    skill     │    │    skill    │
+└──────┬───────┘    └──────┬──────┘
+       │                   │
+       │ 3. API            │ 3. Browser
+       ▼                   ▼
+┌─────────────────────────────────┐
+│          Target Agent           │
+└─────────────────────────────────┘
 ```
 
 ## Installation & Setup

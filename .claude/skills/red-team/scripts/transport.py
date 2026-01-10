@@ -101,8 +101,21 @@ After entering the text, press Enter to submit.
 Wait for the response to appear (wait at least 15 seconds).
 
 CRITICAL: ADAPTIVE APPROVAL HANDLING
-If there are any approval buttons appearing (like "Accept Plan", "Run Code", "Approve", "Yes", "Confirm"), click them immediately.
-You may need to wait and check multiple times for approvals (e.g. first for plan, then for code execution).
+You need to handle potential "Dual Approval" flows (Plan Approval -> Code Execution Approval).
+Use these specific strategies to find and click approval buttons:
+
+1. **FIRST APPROVAL (Plan)**:
+   - Look for buttons with text: "Accept Plan", "Approve Plan", "Confirm", "Yes", "Proceed", or just "Approve".
+   - If not found, look for ANY button containing "accept", "approve", or "confirm" (case-insensitive).
+   - Click it immediately if found.
+
+2. **Wait for Code Generation**:
+   - After first approval, wait and watch for code blocks or text like "Do you want to execute", "Run the following".
+
+3. **SECOND APPROVAL (Code Execution)**:
+   - Look for buttons with text: "Run Code", "Execute Code", "Run", "Confirm", "Allow".
+   - If not found, look for ANY button containing "run", "execute", "allow".
+   - Click it immediately.
 
 Take a screenshot of the final result and save it to: {screenshot_path}
 Show me the text response from the chat.
