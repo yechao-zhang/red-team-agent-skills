@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@playwright/test": "^1.57.0",
+    "playwright-core": "^1.57.0"
+  }
+}

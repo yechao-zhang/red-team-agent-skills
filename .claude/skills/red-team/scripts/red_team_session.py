@@ -161,7 +161,7 @@ def get_next_action(last_response=None, file_content=None):
              # Optimization
              new_payload = attack.optimize_payload_with_api(attempt)
              if new_payload:
-                 attack.set_optimized_payload(new_payload)
+                 attack.set_current_payload(new_payload)
 
              # Prepare next iteration
              state["iteration"] += 1

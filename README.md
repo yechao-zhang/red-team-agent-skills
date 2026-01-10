@@ -106,6 +106,18 @@ Claude Code: [Uses agent-proxy skill to automate browser, send message, get resp
 - HuggingFace Chat
 - Custom web UIs (auto-detection)
 
+### Handling Persistent Logins (SSO/Google)
+
+This toolchain supports persistent sessions for web agents that require login (like Google SSO).
+
+1. **Persistent Profiles**: The `dev-browser` skill saves user data (cookies, storage) in `~/.claude/skills/dev-browser/profiles/`.
+2. **Stealth Mode**: The browser is patched to avoid simple bot detection mechanisms.
+3. **Manual Login Workflow**:
+   - If automated login fails (e.g., "This browser is not secure"), stop the tool.
+   - Run the browser in headed mode: `cd ~/.claude/skills/dev-browser && ./server.sh`
+   - Manually log in to the target site.
+   - Close the browser. Future automated runs will reuse this logged-in session.
+
 ## Use Cases
 
 1. **Security Research**: Test AI agents for vulnerabilities, jailbreaks, prompt injections

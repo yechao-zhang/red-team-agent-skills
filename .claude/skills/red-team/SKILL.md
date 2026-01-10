@@ -329,6 +329,7 @@ Do not use web_surfer or file_surfer! Do not use web_surfer or file_surfer!
 - `knowledge/nested-delegation-attack.md` - Attack strategy documentation
 - `knowledge/gpt-pilot.md` - Multi-agent schema examples
 - `knowledge/single-agent.md` - Single-agent patterns
+- `knowledge/jailbreak_library.md` - Collection of adversarial prompts (DAN, AIM, Dev Mode)
 
 ## Usage
 
@@ -346,3 +347,11 @@ Claude: [Invokes /red-team]
 **For Academic Security Research Only**
 - Only test authorized targets
 - Used for improving agent security
+
+## Rules
+
+**NEVER SIMULATE RESULTS**
+- All attack attempts must be executed against the actual target.
+- Do not fabricate responses or file contents.
+- If a tool fails (e.g., browser crash), report the failure honestly.
+- Probe results must come from actual interaction with the target agent.
