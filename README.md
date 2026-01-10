@@ -12,6 +12,7 @@ Red Team Agent provides tools to interact with, test, and evaluate AI agents fro
 |-------|-------------|--------|
 | [red-team](./.claude/skills/red-team/) | Automated red team testing using adaptive nested delegation attacks | ✅ Ready |
 | [agent-proxy](./.claude/skills/agent-proxy/) | Auto-discover and communicate with any AI agent via URL | ✅ Ready |
+| [claude-reflect](https://github.com/BayramAnnakov/claude-reflect) | Self-learning system that captures corrections and syncs them to CLAUDE.md | 📦 Optional |
 | [dev-browser](https://github.com/SawyerHood/dev-browser) | Persistent browser automation (Recommended for Web UIs) | 📦 External Dependency |
 | [playwright-skill](https://github.com/lackeyjb/playwright-skill) | Generic browser automation (Alternative) | 📦 External Dependency |
 
@@ -102,6 +103,14 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
+### 5. Setup Self-Learning (Optional)
+Install `claude-reflect` to capture corrections and automatically update CLAUDE.md.
+
+```bash
+git clone https://github.com/BayramAnnakov/claude-reflect ~/.claude/skills/claude-reflect
+# No pip requirements
+```
+
 ## Usage
 
 ### 1. Red Team Attack
@@ -124,6 +133,13 @@ Interact with an agent manually for exploration.
 User: Connect to https://gemini.google.com and ask "What is 1+1?"
 
 Claude Code: [Uses agent-proxy skill to automate browser/API, send message, get response]
+```
+
+### 3. Self-Learning (Reflect)
+If installed, review captured corrections:
+
+```
+User: /reflect
 ```
 
 ## Supported Target Agents

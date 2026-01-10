@@ -1,17 +1,3 @@
-# Project Context
-
-## About This Project
-Red Team Agent is a collection of advanced Claude Code skills designed for AI agent security research, adversarial testing, and agent-to-agent communication. It enables Claude Code to act as a proxy user or red teamer, automating interactions with target AI agents (Web UI, API, etc.) to evaluate their security and capabilities.
-
-## Key Skills
-- **red-team**: Automated red team testing using adaptive nested delegation attacks. Located in `.claude/skills/red-team/`.
-- **agent-proxy**: Auto-discover and communicate with AI agents via URL. Located in `.claude/skills/agent-proxy/`.
-
-## Architecture
-The project uses a skill-based architecture where Claude Code orchestrates Python scripts to interact with target agents via:
-1.  **Browser Layer**: Uses `dev-browser` (recommended) or `playwright-skill` for Web UIs.
-2.  **API Layer**: Uses `agent-proxy` for REST/WebSocket APIs.
-
 # Installation & Setup
 
 ## 1. Skill Installation
@@ -30,8 +16,17 @@ To use these skills globally across any project:
     cp -r .claude/skills/agent-proxy ~/.claude/skills/
     ```
 
+### Optional: Claude Reflect (Self-Learning)
+You can install `claude-reflect` to capture learnings and update CLAUDE.md automatically.
+
+```bash
+# Clone and install claude-reflect
+git clone https://github.com/BayramAnnakov/claude-reflect ~/.claude/skills/claude-reflect
+# Note: No pip requirements for this skill (uses standard library)
+```
+
 ## 2. Dependencies
-Install Python dependencies (required for both methods):
+Install Python dependencies (required for red-team and agent-proxy):
 ```bash
 pip install -r .claude/skills/red-team/requirements.txt
 pip install -r .claude/skills/agent-proxy/requirements.txt
@@ -44,6 +39,11 @@ For testing Web UI agents (like ChatGPT, Claude, custom UIs), you must install o
 ### Option A: dev-browser (Recommended)
 This skill provides persistent sessions (cookies/storage), better stealth, and profile management.
 
+**Install via MCP (recommended):**
+Check if `dev-browser` is available in your MCP configuration.
+
+**Install manually:**
+If you have access to the `dev-browser` repository:
 ```bash
 # Clone and install dev-browser skill
 git clone https://github.com/SawyerHood/dev-browser.git ~/.claude/skills/dev-browser
