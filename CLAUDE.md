@@ -37,17 +37,30 @@ pip install -r .claude/skills/red-team/requirements.txt
 pip install -r .claude/skills/agent-proxy/requirements.txt
 ```
 
-## 2. Browser Automation Setup
-The Red Team skill requires a browser automation skill to interact with Web UIs.
+## 3. Browser Automation Setup (Required for Web UIs)
 
-**Option A: dev-browser (Recommended)**
-- Provides persistent sessions (cookies/storage) and better detection avoidance.
-- Must be installed in `~/.claude/skills/dev-browser`.
+For testing Web UI agents (like ChatGPT, Claude, custom UIs), you must install one of the browser automation skills.
 
-**Option B: playwright-skill**
-- A generic browser automation tool.
-- Can be used if `dev-browser` is unavailable.
-- **Note**: The `red-team` skill sends specialized, complex instructions to `playwright-skill` (Adaptive Dual Approval) to ensure functional web automation against complex agent UIs.
+### Option A: dev-browser (Recommended)
+This skill provides persistent sessions (cookies/storage), better stealth, and profile management.
+
+```bash
+# Clone and install dev-browser skill
+git clone https://github.com/SawyerHood/dev-browser.git ~/.claude/skills/dev-browser
+cd ~/.claude/skills/dev-browser
+# Follow installation instructions in its README (usually npm install & build)
+```
+
+### Option B: playwright-skill (Alternative)
+Standard Playwright automation. Use this if `dev-browser` is not available.
+
+```bash
+# Clone and install playwright-skill
+git clone https://github.com/lackeyjb/playwright-skill.git ~/.claude/skills/playwright-skill
+cd ~/.claude/skills/playwright-skill
+pip install -r requirements.txt
+playwright install chromium
+```
 
 # Usage Commands
 

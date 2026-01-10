@@ -74,17 +74,19 @@ For testing Web UI agents (like ChatGPT, Claude, custom UIs), you need a browser
 **Option A: dev-browser (Recommended)**
 Provides persistent sessions, better stealth, and profile management.
 ```bash
-# If you have the dev-browser skill
+# Clone and install dev-browser skill
+git clone https://github.com/SawyerHood/dev-browser.git ~/.claude/skills/dev-browser
 cd ~/.claude/skills/dev-browser
-# Follow its installation instructions
+# Follow installation instructions in its README
 ```
 
 **Option B: playwright-skill (Alternative)**
 Standard Playwright automation.
 ```bash
-# If using playwright-skill
+# Clone and install playwright-skill
+git clone https://github.com/lackeyjb/playwright-skill.git ~/.claude/skills/playwright-skill
 cd ~/.claude/skills/playwright-skill
-pip install playwright
+pip install -r requirements.txt
 playwright install chromium
 ```
 
