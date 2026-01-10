@@ -12,8 +12,8 @@ Red Team Agent provides tools to interact with, test, and evaluate AI agents fro
 |-------|-------------|--------|
 | [red-team](./.claude/skills/red-team/) | Automated red team testing using adaptive nested delegation attacks | ✅ Ready |
 | [agent-proxy](./.claude/skills/agent-proxy/) | Auto-discover and communicate with any AI agent via URL | ✅ Ready |
-| dev-browser | Persistent browser automation (Recommended for Web UIs) | 📦 External Dependency |
-| playwright-skill | Generic browser automation (Alternative) | 📦 External Dependency |
+| [dev-browser](https://github.com/SawyerHood/dev-browser) | Persistent browser automation (Recommended for Web UIs) | 📦 External Dependency |
+| [playwright-skill](https://github.com/lackeyjb/playwright-skill) | Generic browser automation (Alternative) | 📦 External Dependency |
 
 ## Architecture
 
