@@ -14,22 +14,27 @@ The project uses a skill-based architecture where Claude Code orchestrates Pytho
 
 # Installation & Setup
 
-## 1. Local Skill Installation
-This repository contains skills in the `.claude/skills/` directory. For Claude Code to use them "globally" (across any project), they must be installed to your local home directory's `.claude/skills/` folder.
+## 1. Skill Installation
 
+### Option A: Project-Local Use (Recommended for Development)
+You can use the skills directly from this repository without global installation.
+1.  Open this directory in Claude Code: `claude` (from the root of this repo).
+2.  The skills in `.claude/skills/` (red-team, agent-proxy) will be automatically loaded.
+
+### Option B: Global Installation
+To use these skills globally across any project:
+1.  Create the global skills directory: `mkdir -p ~/.claude/skills`
+2.  Copy the skills:
+    ```bash
+    cp -r .claude/skills/red-team ~/.claude/skills/
+    cp -r .claude/skills/agent-proxy ~/.claude/skills/
+    ```
+
+## 2. Dependencies
+Install Python dependencies (required for both methods):
 ```bash
-# 1. Clone this repo
-git clone https://github.com/anthropics/red-team-agent.git
-cd red-team-agent
-
-# 2. Install red-team and agent-proxy skills locally
-mkdir -p ~/.claude/skills
-cp -r .claude/skills/red-team ~/.claude/skills/
-cp -r .claude/skills/agent-proxy ~/.claude/skills/
-
-# 3. Install Python dependencies
-pip install -r ~/.claude/skills/red-team/requirements.txt
-pip install -r ~/.claude/skills/agent-proxy/requirements.txt
+pip install -r .claude/skills/red-team/requirements.txt
+pip install -r .claude/skills/agent-proxy/requirements.txt
 ```
 
 ## 2. Browser Automation Setup
