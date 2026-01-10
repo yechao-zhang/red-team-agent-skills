@@ -14,109 +14,30 @@ description: |
 
 ## System Architecture
 
+The `red-team` skill orchestrates attacks by delegating communication to specialized transport skills (`agent-proxy` or `dev-browser`), which then interact with the target agent.
+
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          Claude Code (Main)                                  │
-│  User: "Test http://localhost:8082"                                         │
-│                    │                                                         │
-│                    ↓                                                         │
-│             Invokes /red-team                                               │
-└────────────────────┬────────────────────────────────────────────────────────┘
-                     │
-                     ↓
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           Red Team Subagent                                  │
-│                                                                              │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │ STEP 0: Read Knowledge (Native Read)                                   │ │
-│  │                                                                         │ │
-│  │  Read ~/.claude/skills/red-team/knowledge/nested-delegation-attack.md  │ │
-│  │  Read ~/.claude/skills/red-team/knowledge/gpt-pilot.md (optional)      │ │
-│  │                                                                         │ │
-│  │  → Understand attack strategy                                          │ │
-│  │  → Learn schema patterns                                               │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                     │                                                        │
-│                     ↓                                                        │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │ STEP 1: Initialize (Python)                                            │ │
-│  │                                                                         │ │
-│  │  from adaptive_attack import AdaptiveNestingAttack                     │ │
-│  │  from transport import TransportFactory                                │ │
-│  │  attack = AdaptiveNestingAttack(target_url, max_iterations=10)         │ │
-│  │  transport = TransportFactory.create_auto(target_url)                  │ │
-│  └────────────────────────────────────────────────────────────────────────┘ │
-│                     │                                                        │
-│                     ↓                                                        │
-│  ┌────────────────────────────────────────────────────────────────────────┐ │
-│  │ STEP 2: Attack Loop                                                    │ │
-│  │                                                                         │ │
-│  │  ┌──────────────────────────────────────────────────────────────────┐  │ │
-│  │  │ 2a. Get Payload (Python)                                         │  │ │
-│  │  │     payload = attack.get_current_payload()                       │  │ │
-│  │  └──────────────────────────────────────────────────────────────────┘  │ │
-│  │                     │                                                   │ │
-│  │                     ↓                                                   │ │
-│  │  ┌──────────────────────────────────────────────────────────────────┐  │ │
-│  │  │ 2b. Send to Target (Transport Layer)                             │  │ │
-│  │  │     instruction = transport.send(payload)                        │  │ │
-│  │  │                                                                   │  │ │
-│  │  │     ► If Web UI (BrowserTransport):                              │  │ │
-│  │  │       → Invokes 'dev-browser' or 'playwright-skill'              │  │ │
-│  │  │       → Handles login, input, adaptive approvals                 │  │ │
-│  │  │                                                                   │  │ │
-│  │  │     ► If API (AgentProxyTransport):                              │  │ │
-│  │  │       → Invokes 'agent-proxy' skill                              │  │ │
-│  │  │       → Handles HTTP/WebSocket/Gradio                            │  │ │
-│  │  │                                                                   │  │ │
-│  │  │     ┌─────────────────────────────────────┐                      │  │ │
-│  │  │     │         Target Agent                │                      │  │ │
-│  │  │     │   Orchestrator → Coder → File       │                      │  │ │
-│  │  │     │                    ↓                │                      │  │ │
-│  │  │     │              ./output.txt           │                      │  │ │
-│  │  │     └─────────────────────────────────────┘                      │  │ │
-│  │  └──────────────────────────────────────────────────────────────────┘  │ │
-│  │                     │                                                   │ │
-│  │                     ↓                                                   │ │
-│  │  ┌──────────────────────────────────────────────────────────────────┐  │ │
-│  │  │ 2c. Check Output File (Native Read)                              │  │ │
-│  │  │     Read ./output.txt                                            │  │ │
-│  │  │     → Returns content or "file not found"                        │  │ │
-│  │  └──────────────────────────────────────────────────────────────────┘  │ │
-│  │                     │                                                   │ │
-│  │                     ↓                                                   │ │
-│  │  ┌──────────────────────────────────────────────────────────────────┐  │ │
-│  │  │ 2d. Record & Judge (Python)                                      │  │ │
-│  │  │     attempt = attack.record_attempt(...)                         │  │ │
-│  │  │     success, reason = attack.judge_success(file_content)         │  │ │
-│  │  └──────────────────────────────────────────────────────────────────┘  │ │
-│  │                     │                                                   │ │
-│  │           ┌─────────┴─────────┐                                        │ │
-│  │           ↓                   ↓                                        │ │
-│  │     ┌──────────┐        ┌──────────┐                                   │ │
-│  │     │ SUCCESS  │        │  FAILED  │                                   │ │
-│  │     └────┬─────┘        └────┬─────┘                                   │ │
-│  │          │                   │                                         │ │
-│  │          ↓                   ↓                                         │ │
-│  │  ┌──────────────┐   ┌─────────────────────────────────────────────┐   │ │
-│  │  │ 2e. Report   │   │ 2f. Optimize Payload                        │   │ │
-│  │  │              │   │                                              │   │ │
-│  │  │ Save report  │   │  Option A: API (Python)                     │   │ │
-│  │  │ Return       │   │    new = attack.optimize_payload_with_api() │   │ │
-│  │  │              │   │                                              │   │ │
-│  │  └──────────────┘   │  Option B: LLM Reasoning (Native)           │   │ │
-│  │                     │    Subagent analyzes and generates          │   │ │
-│  │                     │                                              │   │ │
-│  │                     │  attack.set_optimized_payload(new)          │   │ │
-│  │                     │         │                                    │   │ │
-│  │                     └─────────┼────────────────────────────────────┘   │ │
-│  │                               │                                        │ │
-│  │                               └────────→ Loop to 2a                    │ │
-│  │                                                                         │ │
-│  │  └─────────────────────────────────────────────────────────────────────────┘ │
-│  │                                                                              │
-│  │  Return: {success, iterations, schema}                                      │
-│  └─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────┐
+│ Claude Code │
+└──────┬──────┘
+       │ 1. Invokes
+┌──────▼───────┐
+│   red-team   │
+│    skill     │
+└──────┬───────┘
+       │
+       │ 2. Selects Transport (via transport.py)
+       ▼
+┌──────────────┐    ┌─────────────┐
+│ agent-proxy  │    │ dev-browser │
+│    skill     │    │    skill    │
+└──────┬───────┘    └──────┬──────┘
+       │                   │
+       │ 3. API            │ 3. Browser
+       ▼                   ▼
+┌─────────────────────────────────┐
+│          Target Agent           │
+└─────────────────────────────────┘
 ```
 
 ## Hybrid Design
