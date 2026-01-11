@@ -1,5 +1,6 @@
 # Red Team Agent
 
+Turn your Claude Code into a Red Team Agent!!!
 A collection of Claude Code skills for AI agent security research, adversarial testing, and agent-to-agent communication.
 
 ## Overview
