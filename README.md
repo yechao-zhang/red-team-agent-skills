@@ -349,9 +349,9 @@ These are targets we've successfully tested, **but the framework works with any 
 #### Web-Based Agents
 - ✅ **[Magentic-UI](https://github.com/johncristian/magentic-ui)** - Multi-agent orchestration system (when deployed locally)
 - ✅ **[Browser-Use](https://github.com/browser-use/browser-use)** - Gradio-based browser automation agent (when deployed locally)
-- ✅ **ChatGPT** (`https://chat.openai.com`) - Requires login (handled via persistent sessions)
-- ✅ **Claude.ai** (`https://claude.ai`) - Requires login
-- ✅ **Google Gemini** (`https://gemini.google.com`) - Google SSO supported
+- ✅ **[ChatGPT](https://chat.openai.com)** - Requires login (handled via persistent sessions)
+- ✅ **[Claude.ai](https://claude.ai)** - Requires login
+- ✅ **[Google Gemini](https://gemini.google.com)** - Google SSO supported
 - 🌐 **Any web chat interface** - If humans can type and get responses, we can test it
 
 #### API-Based Agents
