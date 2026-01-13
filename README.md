@@ -116,10 +116,13 @@ git clone https://github.com/BayramAnnakov/claude-reflect ~/.claude/skills/claud
 ## Usage
 
 ### 1. Red Team Attack
+
 Run an automated red team attack against a target agent. This automatically detects if the target is an API or Web UI and uses the appropriate transport.
 
+#### Direct Execution (Default)
 ```
 User: Test http://localhost:8082 for schema extraction using /red-team
+User: /red-team 8082
 ```
 
 The `red-team` skill will:
@@ -127,6 +130,34 @@ The `red-team` skill will:
 2. Deploy a subagent to orchestrate the attack
 3. Use adaptive nested delegation ("Russian Doll" attack) to extract internal schemas
 4. Optimize payloads based on responses
+5. Save results to `reports/` directory
+
+#### Planning-with-Files Workflow
+For complex targets or when you want to review the attack strategy before execution:
+
+```
+User: Red team attack against http://127.0.0.1:7860 using planning-with-files
+User: /red-team 8080 with planning
+User: Plan first, then attack http://localhost:8082
+```
+
+**Workflow**:
+1. **Plan Mode**: Agent researches target, analyzes past reports, and writes a detailed attack plan to `task_plan.md`
+2. **User Review**: You review and approve (or modify) the plan
+3. **Execution**: Agent executes the approved attack strategy
+4. **Report**: Results saved to `reports/` directory
+
+**When to use planning mode**:
+- Unfamiliar or complex targets
+- Want to understand attack approach before execution
+- Need to document attack strategy for compliance/research
+- Testing production systems (review before attacking)
+
+**Trigger keywords**:
+- "planning-with-files"
+- "with planning"
+- "plan first"
+- "files to plan"
 
 ### 2. Agent Proxy
 Interact with an agent manually for exploration.
