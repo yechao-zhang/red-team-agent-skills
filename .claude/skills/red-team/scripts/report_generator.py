@@ -89,6 +89,7 @@ class ReportGenerator:
             ] + ([f"Extracted {content_type.replace('_', ' ').title()}"] if success else []),
             "extracted_content": {
                 "raw_output": schema_raw,
+                "system_prompt": self._extract_system_prompt_snippet(schema_raw),
                 "content_preview": schema_raw[:500] + "..." if len(schema_raw) > 500 else schema_raw
             },
             "defense_bypassed": ["Agent Delegation Restrictions"] if success and is_relevant else [],
@@ -98,6 +99,37 @@ class ReportGenerator:
             "execution_confirmation": "Attack completed",
             "attempt_log_summary": attack_result.get("attempts", [])
         }
+
+    def _extract_system_prompt_snippet(self, content: str) -> str:
+        """
+        Extract probable system prompt from content using heuristics.
+        Looks for 'You are a...', 'System Prompt', or long blocks of instructions.
+        """
+        if not content:
+            return "No content available"
+
+        content_lower = content.lower()
+
+        # Priority 1: Explicit markers
+        markers = ["system prompt", "you are a", "you are an", "instructions:", "guidelines:"]
+        for marker in markers:
+            idx = content_lower.find(marker)
+            if idx != -1:
+                # Return snippet starting from marker
+                return content[idx:idx+500] + "..."
+
+        # Priority 2: JSON fields
+        if '"system_prompt"' in content_lower:
+            # Simple extraction attempt
+            try:
+                import re
+                match = re.search(r'"system_prompt"\s*:\s*"(.*?)"', content, re.DOTALL)
+                if match:
+                    return match.group(1)[:500] + "..."
+            except:
+                pass
+
+        return "System prompt not explicitly identified in snippet"
 
     def _classify_content_with_llm(self, content: str) -> Dict[str, Any]:
         """Use LLM to classify extracted content"""
