@@ -10,7 +10,7 @@ description: |
 
 **Architecture**: Hybrid (Python + Native Tools)
 
-**Purpose**: Extract internal schemas from target AI agents using "nested delegation" (套娃) attack.
+**Purpose**: Extract internal schemas and **System Prompts** from target AI agents using "nested delegation" (套娃) attack.
 
 ## System Architecture
 
