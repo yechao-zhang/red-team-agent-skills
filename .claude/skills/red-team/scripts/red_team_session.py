@@ -49,8 +49,10 @@ def init(url, max_iterations, transport_type=None):
         else:
             agent_name = f"{hostname}_{port}"
 
-    # Use tasks/results/red-team-task/ for organization
-    run_dir = current_dir.parent.parent.parent.parent / "tasks" / "results" / "red-team-task" / f"run_{timestamp}_{agent_name}"
+    # Use results/red-team-task/ for organization
+    # This path is relative to the script location: .claude/skills/red-team/scripts/
+    # We want to go up to root: ../../../../results/red-team-task/
+    run_dir = current_dir.parent.parent.parent.parent / "results" / "red-team-task" / f"run_{timestamp}_{agent_name}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
     attack = ImprovedAdaptiveNestingAttack(
