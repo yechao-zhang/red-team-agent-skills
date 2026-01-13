@@ -257,14 +257,57 @@ Do not use web_surfer or file_surfer! Do not use web_surfer or file_surfer!
 
 ## Usage
 
+### Direct Execution Mode (Default)
+
 ```
 User: Test http://localhost:8082 for schema extraction
+User: /red-team 8082
 
 Claude: [Invokes /red-team]
         [Reads knowledge files]
         [Runs attack loop]
         [Returns result]
 ```
+
+### Planning-with-Files Mode
+
+**Trigger Conditions** - Use EnterPlanMode when user says:
+- "planning-with-files"
+- "with planning"
+- "plan first" / "create a plan"
+- "files to plan"
+- "use planning-with-files to red team"
+- Any variation indicating they want to review the plan before execution
+
+**Workflow**:
+```
+User: Red team attack against http://127.0.0.1:7860 using planning-with-files
+
+Claude: [Calls EnterPlanMode]
+        [Enters plan mode]
+        [Researches target, reads knowledge files, past reports]
+        [Writes plan to task_plan.md with:
+         - Target analysis
+         - Attack strategy (payloads, iterations)
+         - Expected outcomes
+         - Success criteria]
+        [Calls ExitPlanMode to request user approval]
+
+User: [Reviews plan, approves or requests changes]
+
+Claude: [Executes attack following approved plan]
+        [Saves report to reports/]
+```
+
+**When to Use**:
+- User explicitly requests planning mode
+- Complex/unfamiliar targets where strategy needs review
+- User wants to understand attack approach before execution
+
+**When NOT to Use**:
+- User just says "/red-team <target>" with no planning keywords
+- Simple, familiar targets (e.g., repeat attacks)
+- User explicitly says "direct" or "just do it"
 
 ## Ethics
 
