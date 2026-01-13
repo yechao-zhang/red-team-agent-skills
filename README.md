@@ -2,21 +2,58 @@
 
 Turn your Claude Code into a Red Team Agent!!!
 
-A collection of Claude Code skills for AI agent red team research, adversarial testing, penetration testing, and agent-to-agent communication.
+A comprehensive collection of Claude Code skills for AI agent security research, adversarial testing, and automated red team operations. Extract internal schemas, test for vulnerabilities, and evaluate AI agents from any platform.
+
+## What is This?
+
+Red Team Agent is a **hybrid attack framework** that combines:
+- 🧠 **LLM-powered reasoning** - Claude Code intelligently crafts and optimizes attack payloads
+- 🛠️ **Python orchestration** - Automated attack loops with adaptive strategies
+- 🌐 **Multi-transport support** - Works with Web UIs, REST APIs, WebSockets, and Gradio apps
+- 📊 **Self-learning system** - Learns from past attacks and improves over time
+
+**Key Features**:
+- ✅ **Auto-detection** - Automatically identifies target type and selects appropriate transport
+- ✅ **Nested delegation attacks** - "Russian Doll" (套娃) attack to extract internal schemas
+- ✅ **Smart payload optimization** - Learns from responses and adapts attack strategy
+- ✅ **Planning-with-files workflow** - Review attack plans before execution
+- ✅ **Persistent browser sessions** - Handles SSO/Google login with stealth mode
+- ✅ **Comprehensive reporting** - Saves all results with attack strategies for future reference
 
 ## Overview
 
 Red Team Agent provides tools to interact with, test, and evaluate AI agents from various platforms. It enables Claude Code to act as a proxy user, automating conversations with target AI agents for security research and evaluation purposes.
 
+### Attack Results
+
+Successfully extracted schemas from:
+- ✅ **Magentic-UI** (Multi-agent system) - Full nested schema extraction
+- ✅ **Browser-Use** (Single-agent, Gradio) - Complete action schema with 12 action types
+- ✅ More targets documented in `reports/` directory
+
 ## Skills
 
-| Skill | Description | Status |
-|-------|-------------|--------|
-| [red-team](./.claude/skills/red-team/) | Automated red team testing using adaptive nested delegation attacks | ✅ Ready |
-| [agent-proxy](./.claude/skills/agent-proxy/) | Auto-discover and communicate with any AI agent via URL | ✅ Ready |
-| [claude-reflect](https://github.com/BayramAnnakov/claude-reflect) | Self-learning system that captures corrections and syncs them to CLAUDE.md and SKILL.md | 📦 Optional |
-| [dev-browser](https://github.com/SawyerHood/dev-browser) | Persistent browser automation (Recommended for Web UIs) | 📦 External Dependency |
-| [playwright-skill](https://github.com/lackeyjb/playwright-skill) | Generic browser automation (Alternative) | 📦 External Dependency |
+### Core Skills (Included)
+
+| Skill | Description | Purpose |
+|-------|-------------|---------|
+| **[red-team](./.claude/skills/red-team/)** | Automated red team testing using adaptive nested delegation attacks | Main attack orchestrator - extracts schemas and system prompts |
+| **[agent-proxy](./.claude/skills/agent-proxy/)** | Auto-discover and communicate with any AI agent via URL | Transport layer for API-based agents (REST, WebSocket, Gradio) |
+
+### Required External Skills
+
+You **must** install at least one browser automation skill for Web UI targets:
+
+| Skill | Description | Recommendation |
+|-------|-------------|----------------|
+| **[dev-browser](https://github.com/SawyerHood/dev-browser)** | Persistent browser automation with stealth mode | ⭐ **Recommended** - Better session management, handles SSO/Google login |
+| **[playwright-skill](https://github.com/lackeyjb/playwright-skill)** | Generic Playwright-based browser automation | Alternative if dev-browser unavailable |
+
+### Optional Skills
+
+| Skill | Description | Use Case |
+|-------|-------------|----------|
+| **[claude-reflect](https://github.com/BayramAnnakov/claude-reflect)** | Self-learning system that captures corrections and updates CLAUDE.md | Learn from mistakes and improve over time |
 
 ## Architecture
 
@@ -48,70 +85,178 @@ The `red-team` skill orchestrates attacks by delegating communication to special
 
 ## Installation & Setup
 
-You can use these skills directly within this project or install them globally.
+Follow these steps to set up Red Team Agent on your system.
 
-### 1. Clone Repository
+### Prerequisites
+
+- **Claude Code CLI** installed and configured
+- **Python 3.8+** for Python-based skills
+- **Node.js 16+** for browser automation skills
+- **Git** for cloning repositories
+
+### Step 1: Clone This Repository
+
 ```bash
-git clone https://github.com/anthropics/red-team-agent.git
-cd red-team-agent
+git clone https://github.com/yechao-zhang/red-team-agent-skills.git
+cd red-team-agent-skills
 ```
 
-### 2. Install Dependencies
-Install the Python requirements for the included skills.
+### Step 2: Install Core Skill Dependencies
+
+Install Python dependencies for the included `red-team` and `agent-proxy` skills:
 
 ```bash
 pip install -r .claude/skills/red-team/requirements.txt
 pip install -r .claude/skills/agent-proxy/requirements.txt
 ```
 
-### 3. Usage Options
+**What gets installed:**
+- `anthropic` - For LLM-based payload optimization
+- `requests` - For HTTP API communication
+- `websockets` - For WebSocket-based agents
+- `gradio_client` - For Gradio app testing
 
-#### Option A: Project-Local Use (Recommended)
-Run Claude Code directly from this directory. The skills will be automatically loaded.
+### Step 3: Choose Your Usage Mode
+
+You have two options for using these skills:
+
+#### Option A: Project-Local Use (Recommended for Testing)
+
+Run Claude Code directly from this repository. Skills will be automatically loaded from `.claude/skills/`.
 
 ```bash
-# From the red-team-agent directory
+# From the red-team-agent-skills directory
 claude
 ```
 
-#### Option B: Global Installation
-To use these skills globally across any project, copy them to your local configuration directory.
+**Pros:**
+- ✅ Easy to test and modify skills
+- ✅ Keep different versions for different projects
+- ✅ Changes don't affect global skills
+
+**Cons:**
+- ❌ Only available when running from this directory
+
+#### Option B: Global Installation (Recommended for Production)
+
+Install skills globally so they're available in any directory:
 
 ```bash
+# Create global skills directory
 mkdir -p ~/.claude/skills
+
+# Copy core skills
 cp -r .claude/skills/red-team ~/.claude/skills/
 cp -r .claude/skills/agent-proxy ~/.claude/skills/
 ```
 
-### 4. Setup Browser Automation (Required for Web UIs)
-For testing Web UI agents (like ChatGPT, Claude, custom UIs), you need a browser automation skill.
+**Pros:**
+- ✅ Available everywhere
+- ✅ Use `/red-team` from any project
 
-**Option A: dev-browser (Recommended)**
-Provides persistent sessions, better stealth, and profile management.
+**Cons:**
+- ❌ Updates require manual re-copying
+
+### Step 4: Install Browser Automation (Required for Web UIs)
+
+**You must install at least one browser automation skill** to test Web UI agents.
+
+#### Option A: dev-browser (⭐ Recommended)
+
+Best for production use - handles SSO login, persistent sessions, stealth mode.
+
 ```bash
-# Clone and install dev-browser skill
+# Clone dev-browser
 git clone https://github.com/SawyerHood/dev-browser.git ~/.claude/skills/dev-browser
+
+# Install dependencies
 cd ~/.claude/skills/dev-browser
-# Follow installation instructions in its README
+npm install
+
+# Install Playwright browser
+npx playwright install chromium
+
+# Test installation
+./server.sh
+# Should output: "Ready" (press Ctrl+C to stop)
 ```
 
-**Option B: playwright-skill (Alternative)**
-Standard Playwright automation.
+**Features:**
+- ✅ Persistent login sessions (cookies/localStorage saved)
+- ✅ Stealth mode (evades simple bot detection)
+- ✅ Profile management (separate sessions for different targets)
+- ✅ Manual login support for Google SSO
+
+#### Option B: playwright-skill (Alternative)
+
+Standard Playwright automation - use if dev-browser is unavailable.
+
 ```bash
-# Clone and install playwright-skill
+# Clone playwright-skill
 git clone https://github.com/lackeyjb/playwright-skill.git ~/.claude/skills/playwright-skill
+
+# Install dependencies
 cd ~/.claude/skills/playwright-skill
 pip install -r requirements.txt
-playwright install chromium
+npx playwright install chromium
 ```
 
-### 5. Setup Self-Learning (Optional)
-Install `claude-reflect` to capture corrections and automatically update CLAUDE.md.
+**Note:** Less robust for persistent logins compared to dev-browser.
+
+### Step 5: Install Self-Learning (Optional)
+
+Install `claude-reflect` to capture corrections and improve over time:
 
 ```bash
+# Clone claude-reflect
 git clone https://github.com/BayramAnnakov/claude-reflect ~/.claude/skills/claude-reflect
-# No pip requirements
+
+# No additional dependencies needed
 ```
+
+**What it does:**
+- Captures corrections when you say "no, use X instead"
+- Queues learnings for review
+- Run `/reflect` to update CLAUDE.md with lessons learned
+
+### Step 6: Verify Installation
+
+Test that everything is working:
+
+```bash
+# Start Claude Code
+claude
+
+# In Claude Code session:
+# 1. Test skill loading
+User: List available skills
+
+# 2. Test red-team skill
+User: /red-team --help
+
+# 3. Test browser automation (if installed)
+User: Navigate to https://example.com using dev-browser
+```
+
+### Troubleshooting
+
+**Issue: "Skill not found"**
+- Make sure you're in the right directory (project-local mode)
+- Or verify skills are copied to `~/.claude/skills/` (global mode)
+- Run `ls ~/.claude/skills/` to check
+
+**Issue: "dev-browser server not starting"**
+- Check Node.js version: `node --version` (need 16+)
+- Try manually: `cd ~/.claude/skills/dev-browser && ./server.sh`
+- Check port 9222 isn't in use: `lsof -i :9222`
+
+**Issue: "Module not found" (Python)**
+- Reinstall dependencies: `pip install -r .claude/skills/red-team/requirements.txt`
+- Check Python version: `python3 --version` (need 3.8+)
+
+**Issue: "Playwright browser not found"**
+- Install manually: `cd ~/.claude/skills/dev-browser && npx playwright install chromium`
+- Or: `cd ~/.claude/skills/playwright-skill && npx playwright install chromium`
 
 ## Usage
 
@@ -177,31 +322,79 @@ User: /reflect
 
 ## Supported Target Agents
 
-### API-based Agents
-- OpenAI API compatible endpoints
-- Anthropic API
-- Ollama
-- Any REST/WebSocket API
+Red Team Agent can test a wide variety of AI agents across different platforms and interfaces.
 
-### Web-based Agents
-- Google Gemini
-- ChatGPT
-- Claude.ai
-- Poe
-- HuggingFace Chat
-- Custom web UIs (auto-detection)
+### Web-Based Agents (Requires dev-browser or playwright-skill)
+
+| Platform | Example URL | Notes |
+|----------|-------------|-------|
+| **Magentic-UI** | `http://localhost:8082` | Multi-agent orchestration system |
+| **Browser-Use** | `http://127.0.0.1:7860` | Gradio-based browser automation agent |
+| **ChatGPT** | `https://chat.openai.com` | Requires manual login (Google SSO) |
+| **Claude.ai** | `https://claude.ai` | Requires manual login |
+| **Google Gemini** | `https://gemini.google.com` | Requires manual login (Google SSO) |
+| **Poe** | `https://poe.com` | Multiple model support |
+| **HuggingFace Chat** | `https://huggingface.co/chat` | Open model playground |
+| **Custom Web UIs** | Any Gradio/Streamlit app | Auto-detection support |
+
+### API-Based Agents (Uses agent-proxy)
+
+| Type | Example | Authentication |
+|------|---------|----------------|
+| **OpenAI-compatible** | `http://localhost:8000/v1/chat/completions` | API key via headers |
+| **Anthropic API** | `https://api.anthropic.com/v1/messages` | API key via headers |
+| **Ollama** | `http://localhost:11434/api/chat` | No auth required |
+| **Custom REST APIs** | Any JSON API endpoint | Auto-detects format |
+| **WebSocket APIs** | `ws://localhost:8080` | Real-time communication |
+| **Gradio APIs** | Auto-detected from Web UI | Built-in Gradio client |
+
+### Successfully Tested Targets
+
+See `reports/` directory for detailed extraction results:
+- ✅ **Magentic-UI** - Full schema with nested structures (2026-01-11)
+- ✅ **Browser-Use** - Complete 12-action schema (2026-01-14)
+- More examples in the reports folder
 
 ### Handling Persistent Logins (SSO/Google)
 
-This toolchain supports persistent sessions for web agents that require login (like Google SSO).
+The `dev-browser` skill supports persistent sessions for agents requiring login (Google SSO, OAuth, etc.).
 
-1. **Persistent Profiles**: The `dev-browser` skill saves user data (cookies, storage) in `~/.claude/skills/dev-browser/profiles/`.
-2. **Stealth Mode**: The browser is patched to avoid simple bot detection mechanisms.
-3. **Manual Login Workflow**:
-   - If automated login fails (e.g., "This browser is not secure"), stop the tool.
-   - Run the browser in headed mode: `cd ~/.claude/skills/dev-browser && ./server.sh`
-   - Manually log in to the target site.
-   - Close the browser. Future automated runs will reuse this logged-in session.
+**How it works:**
+1. **Automatic persistence** - Cookies and localStorage are saved to `~/.claude/skills/dev-browser/profiles/`
+2. **Stealth mode** - Browser is patched to evade basic bot detection
+3. **Session reuse** - Once logged in, sessions persist across restarts
+
+**Manual login workflow for SSO:**
+
+If automated login fails (e.g., "This browser or app may not be secure"):
+
+```bash
+# 1. Stop any running dev-browser server
+pkill -f "dev-browser"
+
+# 2. Start server in headed mode (visible browser)
+cd ~/.claude/skills/dev-browser
+./server.sh
+# Keep this running in a separate terminal
+
+# 3. In Claude Code, navigate to the login page
+User: Navigate to https://chat.openai.com using dev-browser
+
+# 4. Manually complete login in the visible browser window
+# (Click through Google SSO, complete 2FA, etc.)
+
+# 5. Once logged in, the session is saved automatically
+# Future attacks will reuse this session
+
+# 6. Test that session persists
+User: /red-team https://chat.openai.com
+# Should not require login again
+```
+
+**Tips:**
+- Sessions are saved per domain
+- Delete profiles to force re-login: `rm -rf ~/.claude/skills/dev-browser/profiles/`
+- Use separate profiles for different accounts (not yet implemented)
 
 ## Use Cases
 
@@ -219,18 +412,45 @@ This toolchain supports persistent sessions for web agents that require login (l
 ## Project Structure
 
 ```
-red-team-agent/
-├── README.md
-├── CLAUDE.md                 # Project context and developer guide
-├── .claude/skills/
-│   ├── agent-proxy/          # Agent communication skill
-│   │   ├── SKILL.md
-│   │   └── scripts/
-│   └── red-team/             # Red team testing skill
+red-team-agent-skills/
+├── README.md                        # This file - comprehensive guide
+├── CLAUDE.md                        # Project context and developer guidelines
+├── LICENSE                          # MIT License
+│
+├── .claude/skills/                  # Core skills (included in repo)
+│   ├── red-team/                    # Main attack orchestrator
+│   │   ├── SKILL.md                 # Skill documentation
+│   │   ├── requirements.txt         # Python dependencies
+│   │   ├── scripts/
+│   │   │   ├── improved_adaptive_attack.py
+│   │   │   └── transport.py         # Transport layer (auto-detection)
+│   │   └── knowledge/               # Attack knowledge base
+│   │       ├── nested-delegation-attack.md
+│   │       ├── payload_patterns.md
+│   │       ├── success_criteria.md
+│   │       ├── single-agent.md
+│   │       ├── gpt-pilot.md
+│   │       └── schemas.json
+│   │
+│   └── agent-proxy/                 # API transport layer
 │       ├── SKILL.md
+│       ├── requirements.txt
 │       └── scripts/
-└── docs/
-    └── [documentation...]
+│           └── proxy.py
+│
+├── reports/                         # Attack results (auto-generated)
+│   ├── 2026-01-11_magentic-ui_8082.json
+│   ├── 2026-01-14_browser-use_7860.json
+│   └── ...
+│
+└── docs/                            # Additional documentation
+    └── [documentation files]
+
+External skills (install separately):
+~/.claude/skills/
+├── dev-browser/                     # Browser automation (recommended)
+├── playwright-skill/                # Browser automation (alternative)
+└── claude-reflect/                  # Self-learning (optional)
 ```
 
 ## Contributing
