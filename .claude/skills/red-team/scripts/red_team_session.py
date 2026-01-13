@@ -49,7 +49,8 @@ def init(url, max_iterations, transport_type=None):
         else:
             agent_name = f"{hostname}_{port}"
 
-    run_dir = current_dir.parent / "results" / f"run_{timestamp}_{agent_name}"
+    # Use tasks/results/red-team-task/ for organization
+    run_dir = current_dir.parent.parent.parent.parent / "tasks" / "results" / "red-team-task" / f"run_{timestamp}_{agent_name}"
     run_dir.mkdir(parents=True, exist_ok=True)
 
     attack = ImprovedAdaptiveNestingAttack(

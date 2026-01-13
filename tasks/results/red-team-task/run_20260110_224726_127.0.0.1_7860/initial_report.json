@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-01-10T22:50:42.600918",
+  "target_url": "http://127.0.0.1:7860/",
+  "phase": "Reconnaissance",
+  "probe_successful": true,
+  "discovered_agents": {
+    "无头模式": "不显示浏览器窗口"
+  },
+  "identified_file_agent": "coder_agent",
+  "potential_vectors": [
+    "Nested Delegation",
+    "File System Exfiltration"
+  ]
+}

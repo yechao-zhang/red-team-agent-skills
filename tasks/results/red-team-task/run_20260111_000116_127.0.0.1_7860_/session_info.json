@@ -1,0 +1,7 @@
+{
+  "target_url": "http://127.0.0.1:7860/",
+  "result_dir": "/Users/gaoyang/Library/Mobile Documents/com~apple~CloudDocs/WorkSpace/CODE/red-team-agent/.claude/skills/red-team/results/run_20260111_000116_127.0.0.1_7860_",
+  "leak_file": "/Users/gaoyang/Library/Mobile Documents/com~apple~CloudDocs/WorkSpace/CODE/red-team-agent/.claude/skills/red-team/results/run_20260111_000116_127.0.0.1_7860_/leak_1768060876.txt",
+  "transport_type": "browser",
+  "max_iterations": 10
+}
