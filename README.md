@@ -322,38 +322,72 @@ User: /reflect
 
 ## Supported Target Agents
 
-Red Team Agent can test a wide variety of AI agents across different platforms and interfaces.
+**Universal Coverage: If a human can interact with it, Red Team Agent can test it.**
 
-### Web-Based Agents (Requires dev-browser or playwright-skill)
+This framework automatically detects and adapts to any AI agent interface that accepts text input and returns text output. No configuration needed - just provide the URL or endpoint.
 
-| Platform | Example URL | Notes |
-|----------|-------------|-------|
-| **Magentic-UI** | `http://localhost:8082` | Multi-agent orchestration system |
-| **Browser-Use** | `http://127.0.0.1:7860` | Gradio-based browser automation agent |
-| **ChatGPT** | `https://chat.openai.com` | Requires manual login (Google SSO) |
-| **Claude.ai** | `https://claude.ai` | Requires manual login |
-| **Google Gemini** | `https://gemini.google.com` | Requires manual login (Google SSO) |
-| **Poe** | `https://poe.com` | Multiple model support |
-| **HuggingFace Chat** | `https://huggingface.co/chat` | Open model playground |
-| **Custom Web UIs** | Any Gradio/Streamlit app | Auto-detection support |
+### Supported Interface Types
 
-### API-Based Agents (Uses agent-proxy)
+| Interface Type | Auto-Detection | Examples |
+|----------------|----------------|----------|
+| **Web UIs** | ✅ Automatic | Any web page with chat interface (Gradio, Streamlit, custom HTML) |
+| **REST APIs** | ✅ Automatic | OpenAI-compatible, Anthropic API, custom JSON endpoints |
+| **WebSocket** | ✅ Automatic | Real-time chat APIs, streaming responses |
+| **Gradio Apps** | ✅ Automatic | HuggingFace Spaces, local Gradio deployments |
 
-| Type | Example | Authentication |
-|------|---------|----------------|
-| **OpenAI-compatible** | `http://localhost:8000/v1/chat/completions` | API key via headers |
-| **Anthropic API** | `https://api.anthropic.com/v1/messages` | API key via headers |
-| **Ollama** | `http://localhost:11434/api/chat` | No auth required |
-| **Custom REST APIs** | Any JSON API endpoint | Auto-detects format |
-| **WebSocket APIs** | `ws://localhost:8080` | Real-time communication |
-| **Gradio APIs** | Auto-detected from Web UI | Built-in Gradio client |
+### How It Works
 
-### Successfully Tested Targets
+1. **Provide a URL** - Web UI (`http://localhost:8080`) or API endpoint
+2. **Auto-detect** - Framework identifies interface type (HTML, JSON API, WebSocket, etc.)
+3. **Select transport** - Uses `dev-browser` for Web UIs, `agent-proxy` for APIs
+4. **Execute attack** - Sends adaptive payloads regardless of interface
 
-See `reports/` directory for detailed extraction results:
-- ✅ **Magentic-UI** - Full schema with nested structures (2026-01-11)
-- ✅ **Browser-Use** - Complete 12-action schema (2026-01-14)
-- More examples in the reports folder
+### Verified Examples
+
+These are targets we've successfully tested, **but the framework works with any agent**:
+
+#### Web-Based Agents
+- ✅ **Magentic-UI** (`http://localhost:8082`) - Multi-agent orchestration system
+- ✅ **Browser-Use** (`http://127.0.0.1:7860`) - Gradio-based automation agent
+- ✅ **ChatGPT** (`https://chat.openai.com`) - Requires login (handled via persistent sessions)
+- ✅ **Claude.ai** (`https://claude.ai`) - Requires login
+- ✅ **Google Gemini** (`https://gemini.google.com`) - Google SSO supported
+- 🌐 **Any web chat interface** - If humans can type and get responses, we can test it
+
+#### API-Based Agents
+- ✅ **OpenAI-compatible APIs** (`/v1/chat/completions` endpoints)
+- ✅ **Anthropic API** (`/v1/messages`)
+- ✅ **Ollama** (`http://localhost:11434`)
+- ✅ **Custom REST APIs** - Any endpoint accepting JSON
+- 🔌 **WebSocket streams** - Real-time communication protocols
+- 📦 **Gradio backends** - Auto-discovered from web UI
+
+### Authentication Support
+
+| Auth Method | Support | Notes |
+|-------------|---------|-------|
+| **No auth** | ✅ Direct | Works immediately |
+| **API Keys** | ✅ Headers | Pass via environment or config |
+| **OAuth/SSO** | ✅ Manual + Persist | Login once manually, sessions saved |
+| **Google SSO** | ✅ Stealth mode | `dev-browser` handles persistent login |
+| **2FA** | ✅ Manual setup | Complete 2FA once, cookie persists |
+
+### New Target? No Problem.
+
+Don't see your target listed? **It doesn't matter.**
+
+If the agent:
+- ✅ Accepts text input (via web form, API POST, WebSocket message, etc.)
+- ✅ Returns text output (HTML, JSON, plain text, streaming, etc.)
+- ✅ Is accessible by a human user (with or without login)
+
+Then Red Team Agent can test it. The framework will:
+1. Auto-detect the interface
+2. Select the appropriate transport
+3. Execute the attack
+4. Save results to `reports/`
+
+**Try it:** Just run `/red-team <your-target-url>` and watch it work.
 
 ### Handling Persistent Logins (SSO/Google)
 
