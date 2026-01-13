@@ -347,8 +347,8 @@ This framework automatically detects and adapts to any AI agent interface that a
 These are targets we've successfully tested, **but the framework works with any agent**:
 
 #### Web-Based Agents
-- ✅ **Magentic-UI** (`http://localhost:8082`) - Multi-agent orchestration system
-- ✅ **Browser-Use** (`http://127.0.0.1:7860`) - Gradio-based automation agent
+- ✅ **[Magentic-UI](https://github.com/johncristian/magentic-ui)** - Multi-agent orchestration system (when deployed locally)
+- ✅ **[Browser-Use](https://github.com/browser-use/browser-use)** - Gradio-based browser automation agent (when deployed locally)
 - ✅ **ChatGPT** (`https://chat.openai.com`) - Requires login (handled via persistent sessions)
 - ✅ **Claude.ai** (`https://claude.ai`) - Requires login
 - ✅ **Google Gemini** (`https://gemini.google.com`) - Google SSO supported
