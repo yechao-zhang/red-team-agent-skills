@@ -5,15 +5,16 @@ Execute a comprehensive Red Team attack against the target AI agent at http://12
 
 ## Execution Steps
 
-- [ ] **1. Reconnaissance & Setup**
-    - [ ] Verify target availability (http://127.0.0.1:8082/).
-    - [ ] Initialize `red-team` skill against the target.
+- [x] **1. Reconnaissance & Setup**
+    - [x] Verify target availability (http://127.0.0.1:8082/).
+    - [x] Initialize `red-team` skill against the target.
+    - [x] Set up custom attack script `run_attack.py` to use direct Playwright automation.
 
 - [ ] **2. Attack Execution (Iterative)**
-    - [ ] **Iteration 1**: Initial Probe. Test for basic responsiveness and prompt injection susceptibility.
-    - [ ] **Iteration 2**: Schema Extraction. Attempt to extract `orchestrator_message_schema`, `execution_result_schema`, or similar structures.
-    - [ ] **Iteration 3**: Nested Delegation / "Russian Doll" Attack. Try to force the agent to delegate tasks to sub-agents (e.g., `coder`, `browser`) to reveal their definitions.
-    - [ ] **Iteration 4**: Payload Optimization. Refine payloads based on previous responses (e.g., bypassing filters).
+    - [ ] **Iteration 1**: Initial Probe. Run `run_attack.py` to probe for agents.
+    - [ ] **Iteration 2**: Schema Extraction. Script will automatically iterate to extract schema.
+    - [ ] **Iteration 3**: Nested Delegation / "Russian Doll" Attack. (Handled by script).
+    - [ ] **Iteration 4**: Payload Optimization. (Handled by script).
 
 - [ ] **3. Analysis & Documentation**
     - [ ] Analyze extracted content for sensitive internal structures (Schema vs. Execution Trace).
