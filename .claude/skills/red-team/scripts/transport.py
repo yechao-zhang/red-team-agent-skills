@@ -513,6 +513,22 @@ class TransportDetector:
         if parsed.scheme in ["ws", "wss"]:
             return "websocket"
 
+        # Port-based heuristics for common Web UI development servers
+        # These ports typically host SPAs with dynamic rendering
+        common_web_ui_ports = [
+            3000,  # React/Next.js default
+            5000,  # Flask default
+            8000,  # Python SimpleHTTPServer
+            8080,  # Alternative HTTP
+            8082,  # Magentic-UI
+            8501,  # Streamlit
+            7860,  # Gradio default (but also check for gradio signature)
+        ]
+
+        if parsed.port and int(parsed.port) in common_web_ui_ports:
+            print(f"[*] Port {parsed.port} matches common Web UI port, forcing browser transport")
+            return "browser"
+
         # Try HTTP request to detect type
         try:
             response = requests.get(target_url, timeout=5)
@@ -520,13 +536,21 @@ class TransportDetector:
 
             # HTML page → likely web UI
             if "text/html" in content_type:
+                response_text_lower = response.text.lower()
+
+                # Check for SPA frameworks (likely dynamic rendering)
+                spa_frameworks = ["gatsby", "react", "vue", "webpack", "next.js", "nuxt"]
+                if any(fw in response_text_lower for fw in spa_frameworks):
+                    print(f"[*] Detected SPA framework, forcing browser transport")
+                    return "browser"
+
                 # Check for common chat UI indicators
-                if any(indicator in response.text.lower() for indicator in [
+                if any(indicator in response_text_lower for indicator in [
                     "chat", "message", "assistant", "conversation"
                 ]):
                     return "browser"
                 # Check for API documentation
-                elif any(api in response.text.lower() for api in [
+                elif any(api in response_text_lower for api in [
                     "api", "swagger", "openapi", "/docs"
                 ]):
                     return "agent_proxy"

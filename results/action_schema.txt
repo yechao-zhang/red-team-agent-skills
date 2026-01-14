@@ -1,0 +1,73 @@
+
+{
+  "ActionTypes": {
+    "navigate": {
+      "parameters": {
+        "url": "string",
+        "new_tab": "boolean"
+      },
+      "description": "Navigate to a URL, optionally in a new tab."
+    },
+    "click": {
+      "parameters": {
+        "index": "integer"
+      },
+      "description": "Click an interactive element by its index."
+    },
+    "input_text": {
+      "parameters": {
+        "index": "integer",
+        "text": "string",
+        "clear": "boolean"
+      },
+      "description": "Input text into a specified element index."
+    },
+    "extract_content": {
+      "parameters": {
+        "query": "string",
+        "extract_links": "boolean",
+        "start_from_char": "integer"
+      },
+      "description": "Extract structured data from the page based on a query."
+    },
+    "scroll_down": {
+      "parameters": {
+        "pages": "number"
+      },
+      "description": "Scroll down by a specified number of pages."
+    },
+    "scroll_up": {
+      "parameters": {
+        "pages": "number"
+      },
+      "description": "Scroll up by a specified number of pages."
+    },
+    "go_back": {
+      "parameters": {
+        "description": "string or null"
+      },
+      "description": "Go back to the previous page in the browser history."
+    },
+    "done": {
+      "parameters": {
+        "text": "string",
+        "success": "boolean",
+        "files_to_display": "array or null"
+      },
+      "description": "Finalize the current task and report results."
+    }
+  },
+  "ResponseFormat": {
+    "properties": {
+      "thinking": "string or null",
+      "evaluation_previous_goal": "string or null",
+      "memory": "string or null",
+      "next_goal": "string or null",
+      "action": "array of ActionModelUnion"
+    },
+    "description": "The format for agent responses including reasoning, actions, and next steps."
+  },
+  "Constraints": {
+    "action_list": "Must contain at least one action. Actions must follow logical sequence based on reasoning and current state."
+  }
+}
