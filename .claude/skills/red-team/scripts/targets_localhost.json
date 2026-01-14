@@ -1,0 +1,15 @@
+{
+  "targets": [
+    "http://localhost:8082",
+    "http://localhost:7860"
+  ],
+  "config": {
+    "max_iterations": 8,
+    "headless": false,
+    "timeout_per_target": 600
+  },
+  "notes": {
+    "8082": "Magentic-UI - Multi-agent workflow system",
+    "7860": "Browser-Use or Gradio agent - Typically single-agent"
+  }
+}
