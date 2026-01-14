@@ -513,22 +513,6 @@ class TransportDetector:
         if parsed.scheme in ["ws", "wss"]:
             return "websocket"
 
-        # Port-based heuristics for common Web UI development servers
-        # These ports typically host SPAs with dynamic rendering
-        common_web_ui_ports = [
-            3000,  # React/Next.js default
-            5000,  # Flask default
-            8000,  # Python SimpleHTTPServer
-            8080,  # Alternative HTTP
-            8082,  # Magentic-UI
-            8501,  # Streamlit
-            7860,  # Gradio default (but also check for gradio signature)
-        ]
-
-        if parsed.port and int(parsed.port) in common_web_ui_ports:
-            print(f"[*] Port {parsed.port} matches common Web UI port, forcing browser transport")
-            return "browser"
-
         # Try HTTP request to detect type
         try:
             response = requests.get(target_url, timeout=5)
@@ -538,10 +522,16 @@ class TransportDetector:
             if "text/html" in content_type:
                 response_text_lower = response.text.lower()
 
-                # Check for SPA frameworks (likely dynamic rendering)
-                spa_frameworks = ["gatsby", "react", "vue", "webpack", "next.js", "nuxt"]
-                if any(fw in response_text_lower for fw in spa_frameworks):
-                    print(f"[*] Detected SPA framework, forcing browser transport")
+                # Check for SPA frameworks and bundlers (indicates dynamic rendering)
+                # These apps load content via JavaScript after initial HTML
+                spa_indicators = [
+                    "gatsby", "react", "vue", "webpack", "next.js", "nuxt",
+                    "vite", "parcel", "__react", "__next", "vue-router",
+                    "app.js", "bundle.js", "chunk.js", "main.js",
+                    "data-react", "id=\"root\"", "id=\"app\"", "id=\"__next\""
+                ]
+                if any(indicator in response_text_lower for indicator in spa_indicators):
+                    print(f"[*] Detected SPA/dynamic web app, using browser transport")
                     return "browser"
 
                 # Check for common chat UI indicators
