@@ -269,7 +269,7 @@ Claude: [Invokes /red-team]
         [Returns result]
 ```
 
-### Planning-with-Files Mode
+### Planning-with-Files Mode (Autonomous)
 
 **Trigger Conditions** - Use EnterPlanMode when user says:
 - "planning-with-files"
@@ -279,6 +279,17 @@ Claude: [Invokes /red-team]
 - "use planning-with-files to red team"
 - Any variation indicating they want to review the plan before execution
 
+**IMPORTANT: Autonomous Decision-Making**
+- **DO NOT ask the user questions during planning** - make intelligent autonomous decisions
+- **Auto-select recommended options** - if you recommend an option, use it without asking
+- **Use smart defaults**:
+  - Credentials: Assume no credentials unless target requires auth (then use existing browser session)
+  - Attack Goal: Default to "Full schema + system prompt extraction"
+  - Authorization: Assume authorized if user initiated the attack
+  - Browser Mode: Default to **visible browser** for debugging and observability
+  - Max Iterations: Default to 8-10 iterations
+  - Transport: Auto-detect (browser for web UIs, agent-proxy for APIs)
+
 **Workflow**:
 ```
 User: Red team attack against http://127.0.0.1:7860 using planning-with-files
@@ -286,11 +297,13 @@ User: Red team attack against http://127.0.0.1:7860 using planning-with-files
 Claude: [Calls EnterPlanMode]
         [Enters plan mode]
         [Researches target, reads knowledge files, past reports]
+        [Makes autonomous decisions about attack strategy]
         [Writes plan to task_plan.md with:
          - Target analysis
          - Attack strategy (payloads, iterations)
          - Expected outcomes
-         - Success criteria]
+         - Success criteria
+         - Autonomous decisions made (documented for transparency)]
         [Calls ExitPlanMode to request user approval]
 
 User: [Reviews plan, approves or requests changes]
@@ -299,10 +312,26 @@ Claude: [Executes attack following approved plan]
         [Saves report to reports/]
 ```
 
+**Decision-Making Guidelines**:
+1. **Credentials**:
+   - Web UIs: Use dev-browser's persistent session (assumes user already logged in or will handle manually)
+   - APIs: No credentials unless obvious from context
+
+2. **Attack Configuration**:
+   - Max iterations: 8 (allows probe + 7 attack rounds)
+   - Browser: Visible (headless=false) for transparency
+   - Transport: Auto-detect based on URL
+
+3. **Attack Strategy**:
+   - Start with probe phase
+   - Use adaptive payloads based on probe results
+   - Escalate through fallback templates if needed
+   - Document all decisions in plan file
+
 **When to Use**:
 - User explicitly requests planning mode
 - Complex/unfamiliar targets where strategy needs review
-- User wants to understand attack approach before execution
+- Scalable automated testing (no user interaction during execution)
 
 **When NOT to Use**:
 - User just says "/red-team <target>" with no planning keywords
